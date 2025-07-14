@@ -1,6 +1,7 @@
 # A simple illustration to show the deficiences of PCA, SPCA, CCA, and their partial counterparts
 # for causal dimension reduction.
 
+library(pracma)
 # ========================
 # Supervised PCA & CCA Methods
 # ========================
@@ -48,6 +49,67 @@ partial_cca_scalar <- function(X, Y, C) {
   omega <- solve(Sigma_xx_c, Sigma_xy_c)
   omega <- omega / sqrt(sum(omega^2))
   return(omega)
+}
+
+doPCA <- function(X, Y, C){
+  
+  # === Main function ===
+  find_optimal_omega <- function(X, Y, C, n_grid = 100, n_iter = 200, lr = 1e-2, verbose = TRUE) {
+    n <- nrow(X)
+    p <- ncol(X)
+    
+    # Step 1: residualize Y ~ C to estimate E[Y | Z = z, C], then marginalize C
+    Y_resid <- residuals(lm(Y ~ C))
+    
+    # Objective function: for a given omega, estimate Var(mu(z))
+    estimate_mu_var <- function(omega_unit) {
+      Z <- as.vector(X %*% omega_unit)
+      
+      # Nonparametric estimate of mu(z) = E[Y_resid | Z = z]
+      model <- smooth.spline(Z, Y_resid)
+      z_grid <- seq(min(Z), max(Z), length.out = n_grid)
+      mu_z <- predict(model, x = z_grid)$y
+      
+      return(var(mu_z))
+    }
+    
+    # Gradient approximation via finite difference
+    estimate_gradient <- function(omega, eps = 1e-4) {
+      grad <- numeric(length(omega))
+      for (j in 1:length(omega)) {
+        d <- rep(0, length(omega)); d[j] <- eps
+        omega_plus <- normalize(omega + d)
+        omega_minus <- normalize(omega - d)
+        grad[j] <- (estimate_mu_var(omega_plus) - estimate_mu_var(omega_minus)) / (2 * eps)
+      }
+      return(grad)
+    }
+    
+    # Step 2: Initialize and optimize
+    omega <- normalize(rnorm(p))  # random unit vector
+    
+    for (iter in 1:n_iter) {
+      grad <- estimate_gradient(omega)
+      omega <- normalize(omega + lr * grad)
+      if (verbose && iter %% 10 == 0) {
+        cat(sprintf("Iter %d | Var(mu(z)) = %.5f\n", iter, estimate_mu_var(omega)))
+      }
+    }
+    
+    return(list(omega = omega, var_mu = estimate_mu_var(omega)))
+  }
+  
+  # === Usage example ===
+  # set.seed(42)
+  # n <- 500; p <- 5; q <- 2
+  # C <- matrix(rnorm(n * q), n, q)
+  # X <- matrix(rnorm(n * p), n, p)
+  # X[,1] <- 0.5 * C[,1] + rnorm(n)
+  # Y <- X[,1] * sign(C[,1]) + rnorm(n)
+
+  # result <- find_optimal_omega(X, Y, C)
+  # result$omega  # optimal direction
+  
 }
 
 # ========================
@@ -105,7 +167,8 @@ extract_components <- function(X, Y, ncomp = 1, method = c("spca", "cca", "parti
               loadings = W)
          )
 }
-
+# # Y_threshold <- .5*X[,1] + 3*X[,2] + X[,1] * ifelse(C[,1] > 0, 5, -5) + rnorm(n)
+# Y_threshold <- X[,1] + X[,2] + 2 * X[,1] * exp(C) + rnorm(n)
 # ========================
 # Example: causal setting with p = 3 and confounding
 # ========================
@@ -118,13 +181,14 @@ C <- matrix(rnorm(n * q), n, q)
 
 # Step 2: Generate exposures X with some depending on C
 X     <- matrix(rnorm(n * p), n, p)
-X[,1] <- 0.2 * C[,1] + rnorm(n)     # Mild confounding + signal
-X[,2] <- 5 * C[,1] + rnorm(n)    # Strong confounding + no signal
+X[,1] <- C[,1] + rnorm(n)     # Mild confounding + signal
+X[,2] <- C[,1] + rnorm(n)    # Mild confounding + no signal
                                 # X3 is just independent noise
 
 # Step 3: Generate outcome Y as a function of X1 and C. 
+
 Y_linear   <- ( X[,1] + C[,1] + rnorm(n) )
-Y_threshold <- X[,1] * ifelse(C[,1] > 0, 1, -1) + rnorm(n)
+Y_threshold <- X[,1] + 10*X[,2]*C[,1] + rnorm(n)
 
 Yall <- cbind(Y_linear, Y_threshold)
 
@@ -157,14 +221,13 @@ names(loadings_result) <- c("Linear confounding", "Threshold/nonlinear confoundi
                             ")
 
 # $`Linear confounding`
-# PCA        SPCA         CCA      P-SPCA         P-CCA
-# [1,] -0.04325582  0.74976672 0.767785922  0.99849388  0.9691108604
-# [2,] -0.99898813  0.66154747 0.640706359 -0.02987290 -0.2466249555
-# [3,]  0.01231462 -0.01431151 0.000373572  0.04601715 -0.0005211904
+# PCA        SPCA          CCA      P-SPCA         P-CCA
+# [1,] -0.46298970  0.78352545  0.926794400  0.99416291  0.9964176043
+# [2,] -0.88602129  0.62080443  0.375515356 -0.08918402 -0.0845682816
+# [3,]  0.02463362 -0.02626275 -0.006352747  0.06071508 -0.0004043893
 # 
 # $`Threshold/nonlinear confounding\n                            `
 # PCA      SPCA       CCA     P-SPCA     P-CCA
-# [1,] -0.04325582 0.2776127 0.1547308 0.21095242 0.1125317
-# [2,] -0.99898813 0.4938294 0.5146281 0.05236491 0.8367025
-# [3,]  0.01231462 0.8240532 0.8433364 0.97609272 0.5359716
-# 
+# [1,] -0.46298970 0.5212327 0.4795493 0.33160639 0.4994578
+# [2,] -0.88602129 0.3531516 0.1675463 0.04140479 0.2976573
+# [3,]  0.02463362 0.7769173 0.8613714 0.94250880 0.8135982
