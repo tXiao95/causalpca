@@ -1,51 +1,23 @@
-library(nloptr)
-
-source("R/estimate_DR_curve.R")
-
-#' Causal doPCA
-#'
-#' @description Estimate the first causal principal direction using doPCA
-#'
-#' @param Y Numeric vector (n x 1) – outcome.
-#' @param X Numeric matrix (n x p) – multidimensional treatment.
-#' @param C Numeric matrix (n x q) – baseline confounders.
-#' @param maxit Integer.  Maximum iterations 
-#' @param verbose Logical.  Print objective value during optimisation.
-#'
-#' @return List with elements
-#'
-#' @export
-#'
-#' @examples
-#' set.seed(1)
-# n <- 200; p <- 3; q <- 2
-# X <- matrix(rnorm(n*p), n, p)
-# C <- matrix(rnorm(n*q), n, q)
-# omega_true <- c(1,0.5,-0.5); omega_true <- omega_true/sqrt(sum(omega_true^2))
-# Z <- X %*% omega_true
-# Y <- 2*Z + 0.5*C[,1] + rnorm(n)
-# res <- doPCA(Y, X, C)
-# res$omega
-doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 50, verbose = FALSE){
+csPCA <- function(Y, X, C, maxit = 50, verbose = FALSE){
   n <- nrow(X); p <- ncol(X); q <- ncol(C)
   
   # ---------------------------------------------------------------------------
   # Objective as a function of unconstrained theta
   # ---------------------------------------------------------------------------
+  
+  # Estimate mu(X) for multidimensional continuous treatment (g-comp)
+  mu_X <- gcomp(Y, X, C)
+  
   objective_omega <- function(omega){
-    # We enforce the unit norm in the optimization here. A form of 
-    # reparametrization. 
+    # We enforce the unit norm in the optimization here
     omega  <- omega / sqrt(sum(omega^2))
     Z      <- as.numeric(X %*% omega)
-    if(mu_est == "gcomp"){
-      mu_hat <- gcomp(Y, Z, C)
-    }
-    if(mu_est == "DR"){
-      mu_hat <- estimate_DR_curve(Y, Z, C, Z.new = Z)$DR_curve
-    }
+    
+    # E(mu(X) | Z = z) by kernel smoothing from Kennedy et al. (2017)
+    reg <- kernel_smooth(mu_X, Z)$est
+    
     # Optimizers are minimizers so take the negative of the variance
-    val    <- -var(mu_hat)
-    if(scaled){val <- val / var(Z)}
+    val    <- -var(reg)
     
     cat('Omega:', omega, '\n')
     cat('Norm: ', sqrt(sum(omega^2)), '\n')
@@ -59,7 +31,6 @@ doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 50, verbose
     jac    <- 2 * omega
     list("constraints" = constr,
          "jacobian"    = jac)
-    # return(constr)
   }
   
   # ---------------------------------------------------------------------------
@@ -77,7 +48,7 @@ doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 50, verbose
     x0 = omega0,
     eval_f = objective_omega,
     eval_g_eq = constraint_omega_eq,
-    # Bounds on each element of the omega
+    # Bounds on each element of the omega. Since unit norm, these must be true. 
     lb        = rep(-1, length(omega0)),
     ub        = rep( 1, length(omega0)),
     opts = opts
@@ -86,14 +57,12 @@ doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 50, verbose
   # Get solution
   omega_opt <- opt$solution
   Z_opt     <- as.numeric(X %*% omega_opt)
-  # mu_opt    <- estimate_DR_curve(Z_opt, Y, C, Z.new = Z_opt)
   
   # Return solution, dose-response curve, and optimization metadata
   res <- list(omega       = omega_opt,
-              # mu_hat      = mu_opt,
               Z           = Z_opt,
-              opt = opt)
+              opt         = opt)
   
-  class(res) <- 'doPCA'
+  class(res) <- 'csPCA'
   return(res)
 }

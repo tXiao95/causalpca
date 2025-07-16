@@ -15,7 +15,7 @@ library(SuperLearner)
 #' @export
 
 estimate_DR_curve <- function(Y, Z, C,
-                              Z.new,
+                              Z.new = NULL,
                               SL.library = c("SL.gam", 
                                              "SL.glmnet",
                                              "SL.glm"),
@@ -28,6 +28,9 @@ estimate_DR_curve <- function(Y, Z, C,
   
   C <- data.frame(C)
   n <- length(Z)
+  if(is.null(Z.new)){
+    Z.new <- Z
+  }
   m <- length(Z.new)
   if (nrow(C) != n || length(Y) != n){
     stop("Lengths of Y, Z, and rows of C must be equal")
@@ -47,7 +50,7 @@ estimate_DR_curve <- function(Y, Z, C,
   # Replicate the covariates and treatment 'n' times. 
   # CZ.pred     <- cbind(C[rep(seq_len(n), each = n), , drop = FALSE],
   #                      Z = rep(Z, times = n))                  # n*m rows
-  CZ.pred     <- cbind( C[rep(seq_len(n), m), ],
+  CZ.pred     <- cbind( C[rep(seq_len(n), m), , drop = FALSE],
                         Z = rep(Z.new, rep(n, m)) )                  # n*m rows
   
   # Combine original and new data into one
@@ -63,12 +66,12 @@ estimate_DR_curve <- function(Y, Z, C,
                                         X = C,
                                         SL.library = SL.library,
                                         newX = C.new)
-  pimod.vals   <- pimod$SL.predict                                # n + n^2
+  pimod.vals <- pimod$SL.predict                                # n + n^2
   
   ## 2.2  σ̂²(C) = Var[Z|C]a
-  sq.res <- (Z - pimod.vals[seq_len(n)])^2
+  sq.res     <- (Z - pimod.vals[seq_len(n)])^2
   log.sq.res <- log( pmax(sq.res, 1e-8) )
-  pi2mod <- SuperLearner::SuperLearner(Y = log.sq.res, 
+  pi2mod     <- SuperLearner::SuperLearner(Y = log.sq.res, 
                                        X = C,
                                        SL.library = SL.library,
                                        newX = C.new)
@@ -102,8 +105,8 @@ estimate_DR_curve <- function(Y, Z, C,
   muhat.vals <- mumod$SL.predict                                # n + n^2
   muhat      <- muhat.vals[seq_len(n)]
   muhat.mat  <- matrix( muhat.vals[-seq_len(n)], nrow = n, ncol = m )
-  mhat <- approx_fn(Z.new, apply(muhat.mat, 2, mean), Z)
-  mhat.mat <- matrix( rep(apply(muhat.mat, 2, mean), n), byrow = TRUE, nrow = n)  # m̂(Z_j) = E_C μ̂(C,Z_j)
+  mhat       <- approx_fn(Z.new, apply(muhat.mat, 2, mean), Z)
+  mhat.mat   <- matrix( rep(apply(muhat.mat, 2, mean), n), byrow = TRUE, nrow = n)  # m̂(Z_j) = E_C μ̂(C,Z_j)
   
   ## ------------------------------------------------------------------ ##
   ## 5.  Pseudo-outcome ξ̂_i
@@ -164,3 +167,4 @@ estimate_DR_curve <- function(Y, Z, C,
                          mhat    = mhat,
                          pseudo.out   = pseudo.out))
 }
+

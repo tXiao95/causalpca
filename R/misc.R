@@ -8,3 +8,5 @@ get_coord <- function(theta){
 get_theta <- function(omega){
   return( atan2(omega[2], omega[1]) )
 }
+  
+unitvec <- function(v) v / sqrt(sum(v^2))
