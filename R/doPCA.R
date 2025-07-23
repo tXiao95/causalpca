@@ -1,6 +1,7 @@
 library(nloptr)
 
 source("R/estimate_DR_curve.R")
+source("R/misc.R")
 
 #' Causal doPCA
 #'
@@ -26,15 +27,14 @@ source("R/estimate_DR_curve.R")
 # Y <- 2*Z + 0.5*C[,1] + rnorm(n)
 # res <- doPCA(Y, X, C)
 # res$omega
-doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 50, verbose = FALSE){
+doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 5000, verbose = FALSE, omega0 = NULL){
   n <- nrow(X); p <- ncol(X); q <- ncol(C)
   
   # ---------------------------------------------------------------------------
   # Objective as a function of unconstrained theta
   # ---------------------------------------------------------------------------
   objective_omega <- function(omega){
-    # We enforce the unit norm in the optimization here. A form of 
-    # reparametrization. 
+    # We enforce the unit norm in the optimization here.
     omega  <- omega / sqrt(sum(omega^2))
     Z      <- as.numeric(X %*% omega)
     if(mu_est == "gcomp"){
@@ -66,17 +66,19 @@ doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 50, verbose
   # Optimization routine
   # ---------------------------------------------------------------------------
   # initial value: first PC of X
-  omega0 <- prcomp(X, center = TRUE, scale. = FALSE)$rotation[,1]
-  opts   <- list(algorithm = "NLOPT_LN_COBYLA",
-                maxeval = maxit,
-                xtol_rel = 1e-4,
-                print_level = 1)
+  if(is.null(omega0)){
+    omega0 <- prcomp(X, center = TRUE, scale. = FALSE)$rotation[,1]
+  }
+  opts   <- list(algorithm = "NLOPT_LN_NELDERMEAD",
+                  maxeval = maxit,
+                  xtol_rel = 1e-4,
+                  print_level = 1)
   
   # Solve optimization
   opt <- nloptr(
     x0 = omega0,
     eval_f = objective_omega,
-    eval_g_eq = constraint_omega_eq,
+    # eval_g_eq = constraint_omega_eq,
     # Bounds on each element of the omega
     lb        = rep(-1, length(omega0)),
     ub        = rep( 1, length(omega0)),
@@ -84,7 +86,7 @@ doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 50, verbose
   )
   
   # Get solution
-  omega_opt <- opt$solution
+  omega_opt <- opt$solution |> unitvec()
   Z_opt     <- as.numeric(X %*% omega_opt)
   # mu_opt    <- estimate_DR_curve(Z_opt, Y, C, Z.new = Z_opt)
   
