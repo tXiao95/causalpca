@@ -2,6 +2,8 @@ source("R/misc.R")
 source("R/kernel_smooth.R")
 source("R/gcomp.R")
 
+library(MAVE)
+
 csPCA <- function(Y, X, C, maxit = 5000, verbose = FALSE, omega0=NULL){
   n <- nrow(X); p <- ncol(X); q <- ncol(C)
   
