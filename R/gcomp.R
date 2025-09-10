@@ -1,11 +1,13 @@
 library(SuperLearner)
 gcomp <- function(Y, X, C, X.new = NULL, 
-                               SL.library = c("SL.mean",
-                                              "SL.glm", 
+                               SL.library = c("SL.glm", 
                                               "SL.gam", 
+                                              "SL.mean",
                                               "SL.earth",
                                               "SL.xgboost",
                                               "SL.ranger",
+                                              "SL.bartMachine",
+                                              "SL.randomForest",
                                               "SL.glmnet")) {
   n <- length(Y); p <- ncol(X); q <- ncol(C)
   

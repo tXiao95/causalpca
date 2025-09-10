@@ -1,11 +1,14 @@
 source("R/gcomp.R")
 library(MAVE)
 
-csPCA <- function(Y, X, C, ...){
-  n    <- nrow(X); p <- ncol(X); q <- ncol(C)
-  # Replace mu_X with any estimate of causal mean mu(X). Here we use gcomp or regression adjustment. 
-  mu_X <- gcomp(Y, X, C)
-  mave <- MAVE::mave(mu_X ~ as.matrix(X), method = "meanMAVE", ...)
+csPCA <- function(Y, X, C, ..., gcomp_args = list(), mave_args = list()) {
+  # gcomp call
+  mu_X <- do.call(gcomp, c(list(Y = Y, X = X, C = C), gcomp_args))
+  
+  # mave call
+  mave <- do.call(MAVE::mave,
+                  c(list(formula = mu_X ~ as.matrix(X), method = "meanMAVE"),
+                    mave_args))
   
   return(mave)
 }
