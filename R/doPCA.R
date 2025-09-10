@@ -1,6 +1,6 @@
 library(nloptr)
+library(ManifoldOptim)
 
-source("R/estimate_DR_curve.R")
 source("R/misc.R")
 
 #' Causal doPCA
@@ -27,75 +27,111 @@ source("R/misc.R")
 # Y <- 2*Z + 0.5*C[,1] + rnorm(n)
 # res <- doPCA(Y, X, C)
 # res$omega
-doPCA <- function(Y, X, C, mu_est = "gcomp", scaled = FALSE, maxit = 5000, verbose = FALSE, omega0 = NULL){
-  n <- nrow(X); p <- ncol(X); q <- ncol(C)
+
+dat <- sim_additive(200)
+Y <- dat$Y
+X <- dat$X
+C <- dat$C
+doPCA <- function(Y, X, C, d = 2, mu_est = "gcomp", scaled = FALSE, maxit = 5000, verbose = FALSE, omega0 = NULL){
+  # n <- nrow(X); p <- ncol(X); q <- ncol(C); d <- 2
   
-  # ---------------------------------------------------------------------------
-  # Objective as a function of unconstrained theta
-  # ---------------------------------------------------------------------------
-  objective_omega <- function(omega){
-    # We enforce the unit norm in the optimization here.
-    omega  <- omega / sqrt(sum(omega^2))
-    Z      <- as.numeric(X %*% omega)
-    if(mu_est == "gcomp"){
-      mu_hat <- gcomp(Y, Z, C)
+  ## 0) Ensure numeric matrices and reasonable scale
+  X <- as.matrix(X); storage.mode(X) <- "double"
+  C <- as.matrix(C); storage.mode(C) <- "double"
+  Y <- as.numeric(Y)
+  
+  # scale to improve conditioning
+  Xs <- scale(X); Cs <- scale(C)
+  n  <- nrow(Xs); p <- ncol(Xs); d <- 2
+  
+  ## 1) Fixed CV folds for determinism
+  set.seed(1)
+  V <- 5
+  fold_id <- sample(rep_len(1:V, n))
+  validRows <- split(seq_len(n), fold_id)
+  
+  ## 2) Libraries: fast (phase 1) vs fuller (phase 2)
+  SL_fast <- c("SL.glm", "SL.gam", "SL.glmnet")
+  SL_full <- c("SL.glm", "SL.gam", "SL.glmnet", "SL.ranger")  # add more later if you want
+  
+  ## 3) Optional: subsample index for phase 1 objective
+  n_sub <- min(n, 2000L)
+  sub_id <- if (n > n_sub) sample.int(n, n_sub) else seq_len(n)
+  
+  ## 4) Objective factory so we can switch settings easily
+  gcomp_obj_factory <- function(SL.library, use_subsample = TRUE) {
+    function(beta) {
+      B <- matrix(beta, nrow = p, ncol = d)       # p×d
+      Z <- Xs %*% B                                # n×d
+      
+      if (use_subsample) {
+        i <- sub_id
+        mu_hat <- gcomp(Y[i], Z[i, , drop = FALSE], Cs[i, , drop = FALSE],
+                        SL.library = SL.library,
+                        cvControl  = list(V = V, validRows = lapply(validRows, intersect, y = i)))
+      } else {
+        mu_hat <- gcomp(Y, Z, Cs,
+                        SL.library = SL.library,
+                        cvControl  = list(V = V, validRows = validRows))
+      }
+      
+      # scale objective so magnitudes are O(1)
+      - var(mu_hat, na.rm = TRUE) / var(Y, na.rm = TRUE)
     }
-    if(mu_est == "DR"){
-      mu_hat <- estimate_DR_curve(Y, Z, C, Z.new = Z)$DR_curve
-    }
-    # Optimizers are minimizers so take the negative of the variance
-    val    <- -var(mu_hat)
-    if(scaled){val <- val / var(Z)}
-    
-    cat('Omega:', omega, '\n')
-    cat('Norm: ', sqrt(sum(omega^2)), '\n')
-    cat('Objective:', val, '\n\n')
-    
-    return(val)
   }
   
-  constraint_omega_eq <- function(omega){
-    constr <- sum(omega^2) - 1
-    jac    <- 2 * omega
-    list("constraints" = constr,
-         "jacobian"    = jac)
-    # return(constr)
-  }
+  f_fast <- gcomp_obj_factory(SL_fast, use_subsample = TRUE)
+  f_full <- gcomp_obj_factory(SL_full, use_subsample = FALSE)
   
-  # ---------------------------------------------------------------------------
-  # Optimization routine
-  # ---------------------------------------------------------------------------
-  # initial value: first PC of X
-  if(is.null(omega0)){
-    omega0 <- prcomp(X, center = TRUE, scale. = FALSE)$rotation[,1]
-  }
-  opts   <- list(algorithm = "NLOPT_LN_NELDERMEAD",
-                  maxeval = maxit,
-                  xtol_rel = 1e-4,
-                  print_level = 1)
+  ## 5) Problem + manifold
+  mod  <- Module("ManifoldOptim_module", PACKAGE = "ManifoldOptim")
+  prob_fast <- new(mod$RProblem, f_fast)
   
-  # Solve optimization
-  opt <- nloptr(
-    x0 = omega0,
-    eval_f = objective_omega,
-    # eval_g_eq = constraint_omega_eq,
-    # Bounds on each element of the omega
-    lb        = rep(-1, length(omega0)),
-    ub        = rep( 1, length(omega0)),
-    opts = opts
+  # Good initial value (p×d) and orthonormalize
+  mfit <- MAVE::mave(Y ~ Xs, method = "meanMAVE")
+  x0   <- as.matrix(mfit$dir)[[d]]
+  x0   <- qr.Q(qr(x0))  # ensure Stiefel
+  
+  mani.defn <- get.stiefel.defn(p, d)
+  
+  ## 6) Solver params: coarse then refine
+  mani.params_fast   <- get.manifold.params(IsCheckParams = FALSE)
+  solver.params_fast <- get.solver.params(
+    Tolerance     = 1e-3,
+    Max_Iteration = 200,
+    OutputGap     = 10,
+    DEBUG         = 0
   )
   
-  # Get solution
-  omega_opt <- opt$solution |> unitvec()
-  Z_opt     <- as.numeric(X %*% omega_opt)
-  # mu_opt    <- estimate_DR_curve(Z_opt, Y, C, Z.new = Z_opt)
+  mani.params_ref   <- get.manifold.params(IsCheckParams = FALSE)
+  solver.params_ref <- get.solver.params(
+    Tolerance     = 5e-4,
+    Max_Iteration = 600,
+    OutputGap     = 10,
+    DEBUG         = 0
+  )
   
-  # Return solution, dose-response curve, and optimization metadata
-  res <- list(omega       = omega_opt,
-              # mu_hat      = mu_opt,
-              Z           = Z_opt,
-              opt = opt)
+  ## 7) Phase 1: fast, robust method (RBFGS/RCG) with subsampling
+  res1 <- manifold.optim(
+    prob_fast, mani.defn,
+    method        = "RBFGS",             # or "RCG"
+    mani.params   = mani.params_fast,
+    solver.params = solver.params_fast,
+    x0            = x0
+  )
   
-  class(res) <- 'doPCA'
-  return(res)
+  ## 8) Phase 2: refine with fuller library & trust-region
+  prob_full <- new(mod$RProblem, f_full)
+  
+  res2 <- manifold.optim(
+    prob_full, mani.defn,
+    method        = "RTRSR1",
+    mani.params   = mani.params_ref,
+    solver.params = solver.params_ref,
+    x0            = res1$xopt
+  )
+  
+  res <- res2
+  
+  
 }

@@ -1,76 +1,48 @@
-source("R/misc.R")
-source("R/kernel_smooth.R")
-source("R/gcomp.R")
-
-library(MAVE)
-
-csPCA <- function(Y, X, C, maxit = 5000, verbose = FALSE, omega0=NULL){
-  n <- nrow(X); p <- ncol(X); q <- ncol(C)
+#' Causal Sufficient Dimension Reduction via csPCA (causally sufficient PCA)
+#'
+#' Implements a two-step procedure for causal sufficient dimension reduction:
+#' (1) estimate the causal mean function \eqn{\mu(X)} using a user-specified method,
+#' and (2) apply MAVE (minimum average variance estimation) to find low-dimensional
+#' projections of the covariates that best capture variation in \eqn{\mu(X)}.
+#'
+#' @param Y A numeric vector of outcomes.
+#' @param X A numeric matrix or data frame of covariates (rows = observations, columns = predictors).
+#' @param C A numeric matrix or data frame of confounders (rows aligned with \code{X}).
+#' @param mu_fun A function to estimate the causal mean \eqn{\mu(X)} given \code{Y}, \code{X}, and \code{C}.
+#'   Defaults to \code{gcomp}, but may be replaced by any user-specified function with the same signature.
+#' @param mu_args A named list of additional arguments passed to \code{mu_fun}.
+#' @param mave_args A named list of additional arguments passed to \code{MAVE::mave}.
+#'
+#' @details
+#' The function estimates \eqn{\mu(X)} by calling \code{mu_fun(Y, X, C, ...)}.
+#' The fitted values are then treated as a univariate response in a mean-MAVE
+#' regression of \eqn{\mu(X)} on \code{X}. This identifies low-dimensional
+#' sufficient directions in the covariates for predicting the causal mean.
+#'
+#' By default, the procedure uses regression adjustment via \code{gcomp} for \eqn{\mu(X)},
+#' and mean-MAVE from the \pkg{MAVE} package for sufficient dimension reduction.
+#'
+#' @return An object of class \code{"csPCA_fit"}, which is a list with components:
+#' \describe{
+#'   \item{mave}{The fitted MAVE object returned by \code{MAVE::mave}.}
+#'   \item{mu_X}{The estimated causal mean vector \eqn{\mu(X)}.}
+#' }
+csPCA <- function(Y, X, C,
+                  mu_fun = gcomp,          # function to estimate mu(X)
+                  mu_args = list(),        # args passed to mu_fun
+                  mave_args = list()) {    # args passed to MAVE::mave
   
-  # ---------------------------------------------------------------------------
-  # Objective as a function of unconstrained theta
-  # ---------------------------------------------------------------------------
+  stopifnot(length(Y) == nrow(X), nrow(X) == nrow(C))
   
-  # Estimate mu(X) for multidimensional continuous treatment (g-comp)
-  mu_X <- gcomp(Y, X, C)
+  # 1) Estimate causal mean mu(X)
+  mu_X <- do.call(mu_fun, c(list(Y = Y, X = X, C = C), mu_args))
   
-  objective_omega <- function(omega){
-    # We enforce the unit norm in the optimization here
-    omega  <- omega / sqrt(sum(omega^2))
-    Z      <- as.numeric(X %*% omega)
-    
-    # E(mu(X) | Z = z) by kernel smoothing, borrowed from Kennedy et al. (2017)
-    reg <- kernel_smooth(mu_X, Z)$est
-    
-    # Optimizers are minimizers so take the negative of the variance
-    val    <- -var(reg)
-    
-    cat('Omega:', omega, '\n')
-    cat('Norm: ', sqrt(sum(omega^2)), '\n')
-    cat('Objective:', val, '\n\n')
-    
-    return(val)
-  }
+  # 2) Prepare data for MAVE
+  df <- data.frame(mu_X = as.numeric(mu_X), as.data.frame(X), check.names = FALSE)
   
-  constraint_omega_eq <- function(omega){
-    constr <- sum(omega^2) - 1
-    jac    <- 2 * omega
-    list("constraints" = constr,
-         "jacobian"    = jac)
-  }
+  # 3) Build MAVE args with sensible defaults, allow user overrides
+  base_args <- list(formula = mu_X ~ ., data = df, method = "meanMAVE")
+  fit <- do.call(MAVE::mave, utils::modifyList(base_args, mave_args))
   
-  # ---------------------------------------------------------------------------
-  # Optimization routine
-  # ---------------------------------------------------------------------------
-  # initial value: first PC of X
-  if(is.null(omega0)){
-    omega0 <- prcomp(X, center = TRUE, scale. = FALSE)$rotation[,1]
-  }
-  opts   <- list(algorithm = "NLOPT_LN_NELDERMEAD",
-                maxeval = maxit,
-                xtol_rel = 1e-4,
-                print_level = 1)
-  
-  # Solve optimization
-  opt <- nloptr(
-    x0 = omega0,
-    eval_f = objective_omega,
-    # eval_g_eq = constraint_omega_eq,
-    # Bounds on each element of the omega. Since unit norm, these must be true. 
-    lb        = rep(-1, length(omega0)),
-    ub        = rep( 1, length(omega0)),
-    opts = opts
-  )
-  
-  # Get solution
-  omega_opt <- opt$solution |> unitvec()
-  Z_opt     <- as.numeric(X %*% omega_opt)
-  
-  # Return solution, dose-response curve, and optimization metadata
-  res <- list(omega       = omega_opt,
-              Z           = Z_opt,
-              opt         = opt)
-  
-  class(res) <- 'csPCA'
-  return(res)
+  structure(list(mave = fit, mu_X = mu_X), class = "csPCA_fit")
 }

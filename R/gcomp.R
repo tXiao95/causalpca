@@ -1,4 +1,3 @@
-library(SuperLearner)
 gcomp <- function(Y, X, C, X.new = NULL, 
                                SL.library = c("SL.glm", 
                                               "SL.gam", 
@@ -6,12 +5,11 @@ gcomp <- function(Y, X, C, X.new = NULL,
                                               "SL.earth",
                                               "SL.xgboost",
                                               "SL.ranger",
-                                              "SL.bartMachine",
                                               "SL.randomForest",
                                               "SL.glmnet")) {
   n <- length(Y); p <- ncol(X); q <- ncol(C)
   
-  # Create full covariate matrix (X + C)
+  # Create full covariate matrix (X, C)
   C <- data.frame(C); colnames(C) <- paste0("C", 1:q)
   X <- data.frame(X)
   
@@ -29,12 +27,13 @@ gcomp <- function(Y, X, C, X.new = NULL,
   }
   m <- nrow(X.new)
   
+  # Create each combination of confounders and covariates. 
   C.block <- C[rep(1:n, times = m), , drop = FALSE]
   X.block <- X.new[rep(1:m, each = n), , drop = FALSE]
   
   df.new  <- cbind(X.block, C.block)
   
-  # Predict and average
+  # Predict and average the 'n' E[Y | X=x, C_i] over the confounders at each x value. 
   mu_hat_block <- predict(sl_fit, newdata = df.new)$pred
   mu_mat       <- matrix(mu_hat_block, nrow = n, ncol = m)
   gcomp_est    <- colMeans(mu_mat)
