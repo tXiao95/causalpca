@@ -1,3 +1,5 @@
+# 06/24: This Script was for visualizing the doPCA and csPCA objective functions
+# for (p x 1) beta (d=1). 
 library(ggplot2)
 
 set.seed(1)

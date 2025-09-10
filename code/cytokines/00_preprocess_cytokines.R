@@ -1,19 +1,23 @@
 library(data.table)
-library(stringr)
-library(here)
 library(ggplot2)
+library(here)
+library(stringr)
 
-# Base simulation on that correlation structure. 
-# Pick outcome, and merge the 20 exposures to the data. 
+# Filepaths ---------------------------------------------------------------
+results_path        <- here("outputs/cytokines/figures/")
+cytokine_data_path  <- here("data/cytokines/raw/Cytokines/WOC cytokines_cleaned_06.24.2024.csv")
+covariate_data_path <- here("data/cytokines/raw/Covariate and stress/WOC covar and stress data_05022024.csv")
+final_data_path     <- here("data/cytokines/processed/")
 
 # Functions ---------------------------------------------------------------
-
 # Reads in cytokines in long format: easier for plotting and preprocessing
-reshape_cytokines <- function(type = c("p","m","c"),
-                              file = "data/Eick/Cytokines/WOC cytokines_cleaned_06.24.2024.csv") {
+# type: "m" is maternal, "p" is placental, "c" is cord blood
+reshape_cytokines <- function(type = c("m","p","c"),
+                              file = cytokine_data_path) {
   type <- match.arg(type)
   
   DT <- fread(file)
+  DT <- DT[, crh_m := NULL] # Not sure what this is...variable not in codebook
   
   # --- helper: strip suffix & build a matching key (case/sep-insensitive) ---
   strip_suffix <- function(x, type) {
@@ -162,6 +166,7 @@ histogram_plot <- function(dt, var = "value"){
     theme(text = element_text(size = 9)) 
 }
 
+# Turn alpha, gamma, and beta into Greek letters for plots.
 greekify <- function(x) {
   x <- gsub("-Alpha", "\u2011\u03B1", x, fixed = TRUE)  # non-breaking hyphen + α
   x <- gsub("-Gamma", "\u2011\u03B3", x, fixed = TRUE)  # γ
@@ -169,17 +174,36 @@ greekify <- function(x) {
   x
 }
 
+append_suffix <- function(dt, suffix, exclude = "ppt_id") {
+  stopifnot(is.data.table(dt))
+  stopifnot(is.character(suffix), length(suffix) == 1)
+  
+  # Find columns to rename
+  cols_to_rename <- setdiff(names(dt), exclude)
+  
+  # Construct new names
+  new_names <- paste0(cols_to_rename, "_", suffix)
+  
+  # Apply renaming in place
+  setnames(dt, old = cols_to_rename, new = new_names)
+  
+  return(invisible(dt))
+}
+
 # Read in data ------------------------------------------------------------
+cyto_m <- reshape_cytokines("m")
 cyto_p <- reshape_cytokines("p")
 cyto_c <- reshape_cytokines("c")
 
+cyto_m[, value_new := scale(log(value)), by = cytokine]
 cyto_p[, value_new := scale(log(value)), by = cytokine]
 cyto_c[, value_new := scale(log(value)), by = cytokine]
 
+cyto_m[, cytokine := greekify(cytokine)]
 cyto_p[, cytokine := greekify(cytokine)]
 cyto_c[, cytokine := greekify(cytokine)]
 
-covariates <- fread(here("data/Eick/Covariate and stress/WOC covar and stress data_05022024.csv"))
+covariates <- fread(covariate_data_path)
 
 cov <- covariates[, .(ppt_id, 
                       mat_age, 
@@ -191,32 +215,39 @@ cov <- covariates[, .(ppt_id,
                       marital, # 4 missing
                       mat_race_eth, # 11 missing
                       foreign, # 37 missing
-                       employed, # 2 missing
+                      employed, # 2 missing
                       insurance, # 1 missing
                       gest_multiple,
                       smoke, # 12 missing
                       drugs # 1 missing
                   )]
 
-# Violin Plots ------------------------------------------------------------
-
-violin_plot(cyto_p) + 
-  ggtitle("Placental cytokines (raw scale)")
-ggsave(here(results_path, "Violin Plot of Placental Cytokines - Raw Scale.png"))
-
-violin_plot(cyto_p, "value_new") + 
-  ggtitle("Placental cytokines (log transform then z-score)")
-ggsave(here(results_path, "Violin Plot of Placental Cytokines - Log Transform and Z score.png"))
-
-violin_plot(cyto_c) + 
-  ggtitle("Cord blood cytokines (raw scale)")
-ggsave(here(results_path, "Violin Plot of Cord Blood Cytokines - Raw Scale.png"))
-
-violin_plot(cyto_c, "value_new") + 
-  ggtitle("Cord blood cytokines (log transform then z-score)")
-ggsave(here(results_path, "Violin Plot of Cord Blood Cytokines - Log Transform and Z score.png"))
+# Violin Plots (9/10 TH: Later realized these give pretty misleading ideas of the distribution) ------------------------------------------------------------
+# violin_plot(cyto_p) + 
+#   ggtitle("Placental cytokines (raw scale)")
+# ggsave(here(results_path, "Violin Plot of Placental Cytokines - Raw Scale.png"))
+# 
+# violin_plot(cyto_p, "value_new") + 
+#   ggtitle("Placental cytokines (log transform then z-score)")
+# ggsave(here(results_path, "Violin Plot of Placental Cytokines - Log Transform and Z score.png"))
+# 
+# violin_plot(cyto_c) + 
+#   ggtitle("Cord blood cytokines (raw scale)")
+# ggsave(here(results_path, "Violin Plot of Cord Blood Cytokines - Raw Scale.png"))
+# 
+# violin_plot(cyto_c, "value_new") + 
+#   ggtitle("Cord blood cytokines (log transform then z-score)")
+# ggsave(here(results_path, "Violin Plot of Cord Blood Cytokines - Log Transform and Z score.png"))
 
 # Histograms --------------------------------------------------------------
+histogram_plot(cyto_m) + 
+  ggtitle("Maternal cytokines (raw scale)")
+ggsave(here(results_path, "Histogram Plot of Maternal Cytokines - Raw Scale.png"))
+
+histogram_plot(cyto_m, "value_new") + 
+  ggtitle("Maternal cytokines (log transform then z-score)")
+ggsave(here(results_path, "Histogram Plot of Maternal Cytokines - Log Transform and Z score.png"))
+
 histogram_plot(cyto_p) + 
   ggtitle("Placental cytokines (raw scale)")
 ggsave(here(results_path, "Histogram Plot of Placental Cytokines - Raw Scale.png"))
@@ -234,10 +265,21 @@ histogram_plot(cyto_c, "value_new") +
 ggsave(here(results_path, "Histogram Plot of Cord Blood Cytokines - Log Transform and Z score.png"))
 
 # Data --------------------------------------------------------------------
+cyto_m_wide <- dcast(cyto_m, ppt_id ~ cytokine, value.var = "value_new")
+cyto_m_cor  <- cor(cyto_m_wide[, 2:21])
 cyto_p_wide <- dcast(cyto_p, ppt_id ~ cytokine, value.var = "value_new")
 cyto_p_cor  <- cor(cyto_p_wide[, 2:21])
 cyto_c_wide <- dcast(cyto_c, ppt_id ~ cytokine, value.var = "value_new")
 cyto_c_cor  <- cor(cyto_c_wide[, 2:21], use = "complete.obs")
+
+png(here(results_path, "Correlation Matrix - Maternal.png"), width = 2000, height = 2000, res = 300)
+corrplot::corrplot(cyto_m_cor, method = "color",
+         addCoef.col = "black",    # print correlations on top
+         number.digits = 2, number.cex = 0.6,
+         tl.col = "black", tl.cex = 0.7,
+         type = "upper",
+         diag = FALSE)
+dev.off()
 
 png(here(results_path, "Correlation Matrix - Placental.png"), width = 2000, height = 2000, res = 300)
 corrplot::corrplot(cyto_p_cor, method = "color",
@@ -259,12 +301,15 @@ dev.off()
 
 # Merging in covariates --------------------------------------------------------------
 
-# Merge Placental exposures, cord blood outcome, and covariates. 
-names(cyto_c_wide) <- paste0(names(cyto_c_wide), "_c")
-setnames(cyto_c_wide, "ppt_id_c", "ppt_id")
-c_cols <- c("ppt_id", "IL-6_c", (names(cyto_c_wide)[21]))
+# Modify data.table wide in-place.
+append_suffix(cyto_m_wide, "m")
+append_suffix(cyto_p_wide, "p")
+append_suffix(cyto_c_wide, "c")
 
-dt <- merge(cyto_p_wide, cyto_c_wide[, ..c_cols], by = "ppt_id") |>
+# Merge back maternal, placental, and cord blood cytokines, and maternal covariates. 
+dt <- cyto_m_wide |>
+  merge(cyto_p_wide, by = "ppt_id") |>
+  merge(cyto_c_wide, by = "ppt_id") |>
   merge(cov, by = "ppt_id")
 
 dt[, parity := factor(parity, levels = c(0, 1), labels = c("No prior births", ">=1 prior births"))]
@@ -277,4 +322,4 @@ dt[, insurance := factor(insurance, levels = c(1, 2, 3), labels = c("Private", "
 dt[, drugs := factor(drugs, level = c(0,1,2), labels = c("Never user", "Former User", "Current User"))]
 dt[, smoke := factor(smoke, level = c(0,1,2), labels = c("Never smoker", "Former smoker", "Current smoker"))]
 
-fwrite(dt, here("data/Eick/full_cytokine_p_data_cleaned.csv"))
+fwrite(dt, here(final_data_path, "full(n=106)_cytokine_mpc_log-z-transform_w_covariates.csv"))

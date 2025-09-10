@@ -1,3 +1,7 @@
+# 6/XX/25: This script is important! Will be use din paper
+# Was used to visualize intuitively how doPCA differs from csPCA 
+# using the linear model. 
+
 # =============================================================
 #  2×3 GRID — now including doPCA (scaled & unscaled)
 # =============================================================
