@@ -1,0 +1,388 @@
+---
+title: "Causal dimension reduction for multidimensional continuous exposures"
+subtitle: "an application to environmental mixtures analysis"
+author: "Thomas Hsiao, Ph.D. \\newline October 3rd, 2025"
+date: ""
+institute: "Emory University \\newline Rollins School of Public Health \\newline Department of Biostatistics and Bioinformatics"
+bibliography: references.bib
+format:
+  beamer:
+    classoption: ["4pt"]
+    pdf-engine: xelatex
+    include-in-header:
+      text: |
+        \usepackage{multirow}
+        \usepackage{multicol}
+        \usepackage{booktabs}
+    incremental: false
+    theme: "metropolis"
+    colortheme: "default"
+    fonttheme: "default"
+    header-includes: |
+      % Define custom colors
+      \definecolor{customblue}{HTML}{1e376d}
+      \definecolor{customgold}{HTML}{d9ab28}
+
+      % Change main color for frame title bar (spanning the slide length)
+      \setbeamercolor{frametitle}{bg=customblue,fg=white}
+
+      % Change title text on the title frame to customblue
+      \setbeamercolor{title}{bg=customblue,fg=customblue}
+
+      % Modify the color of the horizontal line in the title slide (Metropolis default line)
+      \setbeamercolor{title separator}{fg=customgold}
+
+      % Set the section title page bar to customblue
+      \setbeamercolor{section title}{fg=customblue,bg=customblue}
+      \setbeamercolor{background canvas}{bg=white}
+
+      <!-- % Theorem block -->
+      <!-- \setbeamercolor{block title}{bg=customblue,fg=white} -->
+      <!-- \setbeamercolor{block body}{bg=lightgray,fg=black} -->
+
+      % Add logo to the top right of the title slide
+      \titlegraphic{%
+        \hfill%
+        \includegraphics[width=3cm]{ShieldEmory_hz_280_pres2023.png}%
+      }
+      
+      % Define the last slide to count in the total (Change this manually to match the "Conclusion" slide number)
+      \newcounter{finalslide}
+      \setcounter{finalslide}{24} % Change this to the last slide before "Conclusion"
+      
+      % Add slide number in the lower right
+       \setbeamertemplate{footline}{
+         \leavevmode%
+         \ifnum\value{framenumber}>1
+           \ifnum\value{framenumber}>\numexpr\value{finalslide}+1\relax % Hide numbering one slide after "Conclusion"
+           \else
+             \hfill%
+             \usebeamercolor[fg]{page number in head/foot}%
+             \usebeamerfont{page number in head/foot}%
+             \the\numexpr\value{framenumber}-1\relax{} / \the\value{finalslide}\kern1em
+           \fi
+         \fi
+      }
+---
+
+# Introduction
+
+## Goals of Mixtures Analysis
+
+- **Understand combined effects**  
+ \small Assess how multiple correlated exposures jointly impact health.  
+
+- **Identify important contributors**  
+  Distinguish exposures (or groups) driving associations.  
+
+- **Handle correlation and interactions**  
+  Account for complex dependencies among exposures.  
+
+- **Improve causal interpretation**  
+  Define meaningful targets (e.g., intervention on the mixture).  
+
+- **Support policy and intervention**  
+  Inform regulations by evaluating effects of realistic multi-exposure scenarios.  
+
+## Environmental mixtures analysis methods
+
+- Weighted quantile sum regression (WQS)
+- Quantile $g$-computation ($q$-gcomp)
+- Bayesian kernel machine regression (BKMR)
+- Bayesian additive regression trees (BART)
+- Distributed lag models with regression trees (DLM tree)
+- Bayesian multiple index models (BMIM)
+  
+## Limitations
+
+Out of all the previous methods, only $q$-gcomp is causal, but it discards information and makes unrealistic parametric assumptions. 
+
+The other full exposure-response methods are not causal and can be hard to interpret. 
+
+## Proposed solution: causally sufficient PCA (csPCA)
+
+We propose a method that can be both **causal** and **interpretable** without throwing away too much information.
+
+The causal inference literature tells us how to account for confounding while making minimal assumptions.
+
+The sufficient dimension reduction (SDR) literature tells us how to do supervised dimension reduction. 
+
+# Causal inference
+
+## Notation
+
+- Observed data: $\mathbf{O}=(Y, \mathbf{X}, \mathbf{C}) \in \mathcal{Y}\times\mathcal{X}\times\mathcal{C}$  
+  - $Y \in \mathbb{R}$: outcome  
+  - $\mathbf{X} \in \mathbb{R}^p$: continuous exposures  
+  - $\mathbf{C} \in \mathbb{R}^q$: covariates  
+
+- Data: i.i.d. sample $(\mathbf{O}_1,\dots,\mathbf{O}_n)$
+
+- Potential outcomes: $Y^{\mathbf{x}}$ = outcome under exposure $\mathbf{x}$  
+
+- Causal mean with intervention $\mathbf{x}$: $\mu_{\mathbf{x}}(\mathbf{x}) := \mathbb{E}\!\left[Y^{\mathbf{x}}\right]$
+
+- Outcome regression: $m(\mathbf{x}, \mathbf{c}):= \mathbb{E}(Y \mid \mathbf{X} = \mathbf{x}, \mathbf{C}=\mathbf{c})$
+
+- Propensity score: $\pi(\mathbf{x}\mid \mathbf{c})=\partial P(\mathbf{X}\leq \mathbf{x}\mid \mathbf{C}=\mathbf{c}) / \partial\mathbf{x}$
+
+## Causal Identification Assumptions
+
+ 1. **Consistency**: If $\mathbf{X}=\mathbf{x}$, then the observed outcome equals the potential outcome:  $Y = Y^{\mathbf{x}}$  
+ 
+ 2. **Positivity**: Every exposure level has nonzero probability (given covariates):  $\pi(\mathbf{x}\mid\mathbf{c}) \geq \varepsilon > 0$  
+ 
+ 3. **Conditional ignorability**: Given covariates, exposure is independent of potential outcomes: $Y^{\mathbf{x}} \;\perp\!\!\!\perp\; \mathbf{X}\mid \mathbf{C}$  
+
+## Identification of the Causal Mean
+
+**Regression adjustment / $g$-formula**
+  $$
+  \mu_{\mathbf{x}}(\mathbf{x}) = \mathbb{E}\!\left[ m(\mathbf{x}, \mathbf{C}) \right]
+  $$
+
+. . .
+
+ **Generalized Propensity Score (GPS)**  
+ $$
+  \mu_{\mathbf{x}}(\mathbf{x}) = \lim_{h\to 0} \mathbb{E} \left[\frac{Y \cdot K\left(\frac{\mathbf{X-\mathbf{x}}}{h}\right)}{h^p \cdot \pi(\mathbf{X} \mid \mathbf{C})}  \right]
+ $$
+
+We focus on the $g$-formula since high-dimensional multivariate response conditional densities are almost impossible to estimate well.
+
+# Sufficient dimension reduction
+
+## Sufficient Dimension Reduction (SDR)
+
+**Goal:** find a linear transformation $\beta \in \mathbb{R}^{p \times d}$ that retains all information about $Y$ in $\mathbf{X}$  
+
+**Central Subspace (CS):**  
+  $$
+  P(Y \le y \mid \mathbf{X}=\mathbf{x}) 
+   = P(Y \le y \mid \beta^\top\mathbf{X}=\beta^\top \mathbf{x})
+  $$
+  
+  - Only $\text{span}(\beta)$ is identifiable  
+  - $\mathcal{S}_{Y\mid \mathbf{X}} = \text{span}(\beta)$  
+
+**Central Mean Subspace (CMS):**  
+  $$
+  \mathbb{E}(Y\mid \mathbf{X}=\mathbf{x})
+   = \mathbb{E}(Y\mid \beta^\top\mathbf{X}=\beta^\top \mathbf{x})
+  $$
+  
+  - Only $\text{span}(\beta)$ is identifiable  
+  - $\mathcal{S}_{\mathbb{E}(Y\mid \mathbf{X})} = \text{span}(\beta)$  
+
+## Semiparametric Estimation of the CMS
+
+- **Semiparametric regression model:**  
+  - Characterized by $\mathbb{E}(Y \mid \mathbf{X})$ depending only on $\beta^\top\mathbf{X}$  
+  - Parameter of interest: $\text{span}(\beta)$  
+
+- **Influence-function–based framework:**  
+  - Bickel et al. (1993), Tsiatis (2006) → full class of RAL estimators  
+  - Ma et al. (2014) derived efficient score for $\beta$  
+  - Luo et al. (2014, 2016) extended to other functionals and improved efficiency  
+
+- **Advantages:**  
+  - Doubly robust estimating equations  
+  - Asymptotic linearity for inference  
+  - Efficiency guarantees via efficient score  
+
+## Gradient-based Alternatives
+
+- **Key identity from CMS:**  
+  $$
+  \frac{\partial \mathbb{E}(Y \mid \mathbf{X}=\mathbf{x})}{\partial \mathbf{x}}
+  = \beta \frac{\partial \mathbb{E}(Y \mid \beta^\top \mathbf{X}=\beta^\top \mathbf{x})}{\partial (\beta^\top\mathbf{x})}
+  \in \text{span}(\beta)
+  $$
+
+- **Approach:** estimate gradients instead of full nuisance functions  
+
+- **Examples:**  
+  - Principal Hessian Directions (Li, 1992)  
+  - Minimum Average Variance Estimator (MAVE, Xia 2002)  
+
+- **Dimension selection:**  
+  - Simple cross-validation for $d_0$  
+  - Balances model fit and parsimony  
+
+## Estimation with MAVE
+
+**Model:**  
+  $$
+  Y = g(\beta^\top \mathbf{X}) + \varepsilon, 
+  \qquad \beta \in \mathbb{R}^{p \times d},\; d \ll p
+  $$
+
+**Local linear approximation:**  
+  $$
+  Y_i \approx a_j + \mathbf{b}_j^\top \beta^\top(\mathbf{X}_i - \mathbf{X}_j)
+  $$
+
+**MAVE objective:**  
+  \begin{align*}
+  \min_{\beta^\top\beta = I_d,\; \{a_j,\mathbf{b}_j\}}
+  \sum_{j=1}^n \sum_{i=1}^n 
+  \Big(Y_i - \{a_j +   \mathbf{b}_j^\top \beta^\top (\mathbf{X}_i - \mathbf{X}_j)\}\Big)^2 \\
+  K_h(\beta^\top\mathbf{X}_i - \beta^\top\mathbf{X}_j)
+  \end{align*}
+  
+## Causal SDR: Motivation
+
+- Standard SDR methods recover subspaces of  
+  $\mathbb{E}(Y \mid \mathbf{X})$  
+- With **confounding**, $\mathbb{E}(Y \mid \mathbf{X}) \neq \mathbb{E}(Y^\mathbf{x})$  
+- Goal: find $\beta \in \mathbb{R}^{p\times d}$ such that
+  $$
+  \mu_{\mathbf{x}}(\mathbf{x}) = \mu(\beta^\top \mathbf{x}), 
+  $$
+  where $\mu_{\mathbf{x}}(\mathbf{x}) = \mathbb{E}(Y^\mathbf{x})$  
+- The estimand of interest is the **span of $\beta$**, called the *causal central mean subspace*  
+  
+## Semiparametric Estimation in the Causal Setting
+
+- Nabi et al. (2022) extended semiparametric SDR to handle confounding  
+- Approximate efficient score:
+
+\begin{align*}
+  S_\text{eff}(\beta) \approx 
+  &\mathbb{E}_q\!\big[\mathbb{E}[\tilde{U}(\beta)\mid \mathbf{X},\mathbf{C}]\mid \mathbf{C}\big]  
+  + \\ &\frac{\pi^*(\mathbf{X})}{\pi(\mathbf{X}\mid\mathbf{C})}\Big(\tilde{U}(\beta)-\mathbb{E}[\tilde{U}(\beta)\mid \mathbf{X},\mathbf{C}]\Big)
+\end{align*}
+
+**Challenge:** Requires estimation of many nuisance functions: regression, variance, conditional moments, and the generalized propensity score  
+
+## csPCA: Causal Sufficient PCA
+
+- **Idea**: adapt MAVE (Minimum Average Variance Estimation) to causal SDR  
+- Note: $\mu_{\mathbf{x}}(\mathbf{x}) = g(\beta^\top \mathbf{x})$ for some smooth $g$  
+- Replace $Y$ in the MAVE objective with estimated causal mean $\hat{\mu}_{\mathbf{x}}(\mathbf{X})$  
+- $\hat{\mu}_{\mathbf{x}}$ estimated once via the $g$-formula using flexible learners  
+- Then run MAVE optimization with $\hat{\mu}_{\mathbf{x}}$ treated as fixed  
+- Benefits:  
+  - Consistent for the causal central mean subspace  
+  - Efficient iterative algorithm with closed-form updates. No nuisance estimation or high-dimensional search.
+
+## Theory and Dimension Selection
+
+- **Convergence:**  
+  $$
+  \|(I-\hat{\beta}\hat{\beta}^\top)\beta\| 
+  = O_p(h^3 + h\delta_n + h^{-1}\delta_n^2 + h^{-1}B_n)
+  $$
+  where $\delta_n=(\log n/(nh^p))^{1/2}$, and $B_n$ is the rate for $\hat{\mu}_{\mathbf{x}}$. If the causal mean is estimated well, csPCA converges faster than the normal kernel bias of $O(h^2)$.   
+
+- **Dimension selection procedure:**  
+  - For each candidate $d$, compute $\hat{\beta}_d$ from csPCA  
+  - Fit a kernel regression of $\hat{\mu}_{\mathbf{x}}(\mathbf{X}_i)$ on $\hat{\beta}_d^\top \mathbf{X}_i$  
+  - Define CV score:  
+    $\text{CV}(d) = \frac{1}{n}\sum_i (\hat{\mu}_{\mathbf{x}}(\mathbf{X}_i) - \hat{a}_{d0,i})^2$  
+  - Select $\hat{d} = \arg\min_d \text{CV}(d)$ (consistent for the true dimension)  
+
+# Simulation studies
+
+## Simulation DGP 
+
+Below is the data-generating process where $\Phi(\cdot)$ is the normal CDF and $\Sigma_X[i,j]=0.8^{|i-j|}$.
+
+\begin{align*}
+  \mathbf{C} &\sim \mathcal{N}_q(\mathbf{0},\, \Sigma_C) \\ 
+  \mathbf{X} \mid \mathbf{C}&\sim N_p(\Phi(\Theta^\top\mathbf{C}), \Sigma_X) \\
+   Y\mid \mathbf{X}, \mathbf{C} &=  0.1 \cdot [h(\mathbf{Z})+ g(\mathbf{C})+Z_1\ C_1] + \\ 
+     & \varepsilon_Y\sqrt{0.5 + \Phi\left( C_1+C_2\right)}
+\end{align*}
+
+The true causal mean is
+
+$$\mu_\beta(\mathbf{z})=0.1\cdot h(\mathbf{z})=0.1\big[z_1+ 0.5 \cdot (z_2^2+z_1z_2)\big]$$ 
+
+## Estimation error in $\mathcal{S}_{\mathbb{E}(Y^{\mathbf{x}})}$
+
+![Frobenius error in estimating the causal central mean subspace.](results/simulation-boxplot.pdf)
+
+## Order determination
+
+\begin{table}[ht]
+\centering
+\caption{Percentage of estimated structural dimension. In this simulation the true dimension was $d_0=2$.}
+\label{tab:dhat}
+\begin{tabular}{c lrrrr}
+\toprule
+$n$ & Method & $d{=}1$ & \textbf{$d{=}2$} & $d{=}3$ & $d{=}4$ \\
+\midrule
+\multirow{4}{*}{100}
+  & SDR         & 0.016 & \textbf{0.550} & 0.397 & 0.036 \\
+  & csPCA (Oracle) & 0.498 & \textbf{0.502} & 0.000 & 0.000 \\
+  & csPCA (L=1) & 0.343 & \textbf{0.605} & 0.052 & 0.000 \\
+  & csPCA (L=5) & 0.163 & \textbf{0.738} & 0.099 & 0.000 \\
+\midrule
+\multirow{4}{*}{1600}
+  & SDR         & 0.784 & \textbf{0.214} & 0.002 & 0.000 \\
+  & csPCA (Oracle) & 0.000 & \textbf{1.000} & 0.000 & 0.000 \\
+  & csPCA (L=1) & 0.000 & \textbf{1.000} & 0.000 & 0.000 \\
+  & csPCA (L=5) & 0.000 & \textbf{1.000} & 0.000 & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+# Real data analysis
+
+## Dataset: Maternal and Fetal Cytokines
+
+- **Study population:**  
+  - $N = 106$ women receiving elective pregnancy termination  
+  - 15–24 gestational weeks (2010–2016, UCSF clinic)  
+
+- **Data collected:**  
+  - Maternal sociodemographic and medical information  
+  - Biospecimens: maternal blood, matched cord blood samples  
+
+- **Measurements:**  
+  - 20 highly correlated pro- and anti-inflammatory cytokines  
+  - Outcome of interest: **cord blood IL-6**  
+
+- **Motivation:**  
+  - Mid-pregnancy fetal samples are rare  
+  - Opportunity to study maternal biomarkers → fetal inflammation  
+
+## Correlation among exposures and outcome
+
+![Correlation among maternal exposures and cord blood outcome](outputs/cytokines/figures/corrmatrix_maternal_cord.png){width=70%}
+
+## Loadings (csPCA)
+
+![Estimate of $\beta$ for $d=1$ and $d=2$. Can interpret as loadings in factor analysis or probabilistic PCA.](results/figures/csPCA_IL6.png)
+
+## SDR relationship with causal mean
+
+![Scatterplot of the dimension reduction $Z=\beta^\top \mathbf{X}$ against the estimated causal mean $\hat{\mu}_\mathbf{x}(\mathbf{X}_i)$](results/figures/RDA_Z1_muX.png){width=70%}
+
+## Conclusion
+
+- We propose a more computationally efficient method to estimate the causal central mean subspace
+
+- This dimension reduction can improve on mixtures analysis by being both **causal** and **interpretable**
+
+- More work! In particular efficiency gains, other dimension reduction frameworks, and theoretical guarantees
+
+## Acknowledgments
+
+Thank you to my postdoc advisers Razieh Nabi and Howard Chang! 
+
+# Questions?
+
+## References {.allowframebreaks}
+
+::: {#refs}
+:::
+
+# Appendix
+
+## Loadings (regular SDR)
+
+[@van_lieshout_infill_2021]
+
+![](results/figures/MAVE_IL6.png)
