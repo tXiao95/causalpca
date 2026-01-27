@@ -55,7 +55,13 @@ plt1 <- plot_factor_loadings(fit$mave, 1) + ggtitle("d=1") + theme(plot.title = 
 plt2 <- plot_factor_loadings(fit$mave, 2) + ggtitle("d=2") + theme(plot.title = element_text(size = 10))
 
 plt <- plt1 / plt2 
-ggsave(here("results/figures/csPCA Loadings for cytokines (Maternal to Cord Blood IL-6.png"), 
+# ggsave(here("results/figures/csPCA Loadings for cytokines (Maternal to Cord Blood IL-6.png"), 
+#        width = 11, height=4, units = "in")
+# ggsave(here("results/figures/csPCA Loadings for cytokines (Maternal to Cord Blood IL-6.pdf"), 
+#        width = 11, height=4, units = "in")
+ggsave(here("results/figures/csPCA_IL6.pdf"), 
+       width = 11, height=4, units = "in")
+ggsave(here("results/figures/csPCA_IL6.png"), 
        width = 11, height=4, units = "in")
 
 plt1.mave <- plot_factor_loadings(fit.mave, 1) 
@@ -63,7 +69,11 @@ plt2.mave <- plot_factor_loadings(fit.mave, 2)
 plt3.mave <- plot_factor_loadings(fit.mave, 3)
 
 plt.mave <- plt1.mave / plt2.mave / plt3.mave
-ggsave(here("results/figures/MAVE Loadings for cytokines (Maternal to Cord Blood IL-6.png"), 
+ggsave(here("results/figures/MAVE Loadings for cytokines (Maternal to Cord Blood IL-6.png"),
+       width = 11, height=7, units = "in")
+ggsave(here("results/figures/MAVE Loadings for cytokines (Maternal to Cord Blood IL-6.pdf"), 
+       width = 11, height=7, units = "in")
+ggsave(here("results/figures/MAVE_IL6.png"), 
        width = 11, height=7, units = "in")
 
 # Scatterplot of Z against mu(X) --------------------------------------
@@ -80,16 +90,22 @@ plt.scatter <- ggplot(newdf, aes(dir1, muhat_X)) +
   xlab(expression(Z[1])) + 
   ylab(expression(mu[x]))
 
-ggsave(filename = here("results/figures/Real Data Analysis Scatter of Z1 against mu(X).png"), 
+# ggsave(filename = here("results/figures/Real Data Analysis Scatter of Z1 against mu(X).png"), 
+#        units = "in", width = 6, height = 4)
+ggsave(filename = here("results/figures/Real Data Analysis Scatter of Z1 against mu(X).pdf"), 
+       units = "in", width = 6, height = 4)
+ggsave(filename = here("results/figures/RDA_Z1_muX.pdf"), 
+       units = "in", width = 6, height = 4)
+ggsave(filename = here("results/figures/RDA_Z1_muX.png"), 
        units = "in", width = 6, height = 4)
 
 # Estimate DR causal curve with Z -----------------------------------------
-set.seed(123)
-muhat.Z <- gcomp(Y, Z, C, SL.library = SL.library)
-muhat.Z <- estimate_DR_curve(Y, Z, C, Z.new = 0)
-newdf <- cbind(muhat_Z = muhat.Z, 
-               muhat_X = fit$mu_X, 
-               Y, Z, X)
-
-ggplot(newdf, aes(dir1, dir2)) + geom_point()
-
+# set.seed(123)
+# muhat.Z <- gcomp(Y, Z, C, SL.library = SL.library)
+# muhat.Z <- estimate_DR_curve(Y, Z, C, Z.new = 0)
+# newdf <- cbind(muhat_Z = muhat.Z, 
+#                muhat_X = fit$mu_X, 
+#                Y, Z, X)
+# 
+# ggplot(newdf, aes(dir1, dir2)) + geom_point()
+# 

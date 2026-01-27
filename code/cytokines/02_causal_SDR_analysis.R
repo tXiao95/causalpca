@@ -9,7 +9,6 @@ source(here("R/gcomp.R"))
 
 
 # Functions ---------------------------------------------------------------
-
 correlation_matrix_plot <- function(dt, type){
   dt.cor <- cor(dt[, 2:23])
   if(type == "mc" | type == "pc"){
@@ -28,7 +27,7 @@ correlation_matrix_plot <- function(dt, type){
                      tl.col = label_colors,    # customized colors
                      tl.cex = label_cex,       # customized sizes
                      type = "upper",
-                     diag = TRUE)
+                     diag = TRUE, cl.pos = "n")
 }
 
 #--- robust single-analysis helper --------------------------------------------
@@ -44,6 +43,7 @@ compute_beta_final_safe <- function(DT, y_name, x_cols = 2:21, c_cols = 24:32,
     )
     
     d     <- MAVE::mave.dim(fit$mave)$dim.min
+    d <- ifelse(d==1, 2, d)
     beta  <- fit$mave$dir[[d]]                      # rows = variables, cols = directions
     
     # Orthonormalize (preserve rownames) then varimax

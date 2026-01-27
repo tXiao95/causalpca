@@ -10,33 +10,42 @@ source(here("R/pCCA.R"))
 source(here("R/csPCA.R"))
 source(here("R/gcomp.R"))
 
+# SL library
+SL.lib <- c("SL.glm", "SL.gam", "SL.glmnet", "tmle.SL.dbarts2")
 #' Projection into the d-dim subspace of R^p
 project <- function(P){
   P %*% solve(t(P) %*% P) %*% t(P)
 }
 
-predict_mu <- function(beta, Y, X, C){
+predict_mu <- function(beta, Y, X, C, SL.lib){
   Z      <- X %*% beta
-  mu_hat <- gcomp(Y, Z, C, SL.library = c("SL.glm", 
-                                          "tmle.SL.dbarts2", 
-                                          "SL.glmnet"))
+  mu_hat <- gcomp(Y, Z, C, SL.library = SL.lib)
   return(mu_hat)
 }
+
 
 # Main code ---------------------------------------------------------------
 main <- function(){
   #tables <- lapply(c(100, 200, 400, 800, 1600, 3200, 6400), function(n){
   tables <- lapply(c(100, 200, 400, 800, 1600), function(n){
-  #tables <- lapply(c(100), function(n){
+  #tables <- lapply(c(1600), function(n){
     # For reproducibility - set seed as Task ID
     message("Simulation experiment with sample size ", n)
     set.seed(TASK_ID)
     
     # Generate data
+    #sim <- simulate_data(n = n, p=20, q=10, 
+    #                     h_Z_coef = 0.1,
+    #                     g_C_coef = 0.1, 
+    #                     interaction_coef = 0.1, 
+    #                     rho = 0.8, var_scale = 3)
     sim <- simulate_data(n = n, p=20, q=10, 
-                         h_Z_coef = 0.1,
+                         h_Z_coef = 0.01,
                          g_C_coef = 0.1, 
                          interaction_coef = 0.1, 
+                         Z1_coef = 10, 
+                         Z2_coef = 5, 
+                         Z12_coef = 5,
                          rho = 0.8, var_scale = 3)
     
     # Data
@@ -54,7 +63,7 @@ main <- function(){
     })
     P_truth         <- project( truth$dir[[2]] )
     dhat_truth      <- MAVE::mave.dim(truth)$dim.min
-    muhat_truth     <- predict_mu(truth$dir[[2]], Y, X, C)
+    muhat_truth     <- predict_mu(truth$dir[[2]], Y, X, C, SL.lib)
     mu_Z_mse_truth  <- mean( (muhat_truth - sim$mu_X)^2 )
     
     
@@ -63,15 +72,11 @@ main <- function(){
       cs   <- csPCA(Y, X, C, 
                     L = 1,
                     mu_fun = gcomp, 
-                    mu_args = list(SL.library = c("SL.glm", 
-                                                  "tmle.SL.dbarts2",
-                                                  "SL.glmnet" 
-                                                )
-                                   ))
+                    mu_args = list(SL.library = SL.lib))
     })
     P_cs        <- project( cs$mave$dir[[2]] )
     dhat_cs     <- MAVE::mave.dim( cs$mave )$dim.min
-    muhat_cs    <- predict_mu(cs$mave$dir[[2]], Y, X, C)
+    muhat_cs    <- predict_mu(cs$mave$dir[[2]], Y, X, C, SL.lib)
     mu_Z_mse_cs <- mean( (muhat_cs - sim$mu_X)^2 )
     mu_X_mse_cs <- mean( (cs$mu_X - sim$mu_X )^2 )
     
@@ -80,15 +85,13 @@ main <- function(){
       cs_cf   <- csPCA(Y, X, C, 
                     L = 5,
                     mu_fun = gcomp, 
-                    mu_args = list(SL.library = c("SL.glm",
-                                                  "tmle.SL.dbarts2",
-                                                  "SL.glmnet" 
+                    mu_args = list(SL.library = c(SL.lib
                                                 )
                                    ))
     })
     P_cs_cf        <- project( cs_cf$mave$dir[[2]] )
     dhat_cs_cf     <- MAVE::mave.dim( cs_cf$mave )$dim.min
-    muhat_cs_cf    <- predict_mu(cs_cf$mave$dir[[2]], Y, X, C)
+    muhat_cs_cf    <- predict_mu(cs_cf$mave$dir[[2]], Y, X, C, SL.lib)
     mu_Z_mse_cs_cf <- mean( (muhat_cs_cf - sim$mu_X)^2 )
     mu_X_mse_cs_cf <- mean( (cs_cf$mu_X - sim$mu_X )^2 )
     
@@ -104,7 +107,7 @@ main <- function(){
     })
     P_reg        <- project( reg$dir[[2]] )
     dhat_reg     <- MAVE::mave.dim( reg )$dim.min
-    muhat_reg    <- predict_mu( reg$dir[[2]], Y, X, C)
+    muhat_reg    <- predict_mu( reg$dir[[2]], Y, X, C, SL.lib)
     mu_Z_mse_reg <- mean( (muhat_reg - sim$mu_X)^2 )
     mu_X_mse_reg <- mean( (Y - sim$mu_X)^2 )
     
@@ -165,10 +168,8 @@ main <- function(){
   }) |> rbindlist()
   
   filename <- paste0("sim-", sprintf("%03d", TASK_ID))
-  #data.table::fwrite(tables, file = here(paste0("outputs/simulation/enar-student-paper2_low-rho_p6/", filename, ".csv")) )
-  data.table::fwrite(tables, file = here(paste0("outputs/simulation/enar-student-paper2_high-rho_p20/", filename, ".csv")) )
-  #data.table::fwrite(tables, file = here(paste0("outputs/simulation/enar-student-paper2_high-rho_p6/", filename, ".csv")) )
-  #data.table::fwrite(tables, file = here(paste0("outputs/simulation/enar-student-paper2_low-rho_p20/", filename, ".csv")) )
+  #data.table::fwrite(tables, file = here(paste0("outputs/simulation/enar-student-paper2_high-rho_p20/", filename, ".csv")) )
+  data.table::fwrite(tables, file = here(paste0("outputs/simulation/enar-student-paper2_highZ1/", filename, ".csv")) )
 }
 
 # Arguments for main ------------------------------------------------------

@@ -2,6 +2,9 @@ simulate_data <- function(n,
                           p = 20, 
                           q = 10,
                           rho = 0.8,
+                          Z1_coef = 10,
+                          Z2_coef = 2,
+                          Z12_coef = 1,
                           h_Z_coef = 0.1,
                           g_C_coef = 1,
                           var_scale = 3,
@@ -40,7 +43,7 @@ simulate_data <- function(n,
   
   # --- Outcome ---
   g_C   <- sin(C %*% Theta[,1]) 
-  h_Z   <- Z[,1] + Z[,2]^2 + Z[,1]*Z[,2]
+  h_Z   <- Z1_coef * Z[,1] + Z2_coef * Z[,2]^2 + Z12_coef * Z[,1]*Z[,2]
   eps_Y <- rnorm(n, mean = 0, sd = 0.5)
   
   # Y response model

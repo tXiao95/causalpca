@@ -162,7 +162,7 @@ histogram_plot <- function(dt, var = "value"){
     geom_histogram(bins = 30, col = "black") +
     facet_wrap(~ cytokine, scales = ifelse(var == "value", "free_x", "fixed")) +
     theme_bw() +
-    ylab("pg/mL") + xlab("Count") + 
+    xlab("pg/mL") + ylab("Count") + 
     theme(text = element_text(size = 9)) 
 }
 
