@@ -71,7 +71,5 @@ csPCA <- function(Y, X, C,
   base_args <- list(formula = mu_X ~ ., data = df, method = "meanMAVE")
   fit       <- do.call(MAVE::mave, utils::modifyList(base_args, mave_args))
   
-  # 4) Postprocessing: ensure MAVE outputs for each 'd' are orthonormal.
-  
   structure(list(mave = fit, mu_X = mu_X), class = "csPCA_fit")
 }

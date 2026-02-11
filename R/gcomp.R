@@ -1,10 +1,11 @@
 gcomp <- function(Y, X, C, X.new = NULL, ...) {
   n <- length(Y); p <- ncol(X); q <- ncol(C)
   
-  # Create full covariate matrix (X, C)
+  # Need to relabel C since default names are X1,X2,...
   C <- data.frame(C); colnames(C) <- paste0("C", 1:q)
-  X <- data.frame(X)
+  X <- data.frame(X); colnames(X) <- paste0("X", 1:p)
   
+  # Create full covariate matrix (X, C)
   df <- cbind(X, C)
   
   # Fit outcome regression: E[Y | X, C]
