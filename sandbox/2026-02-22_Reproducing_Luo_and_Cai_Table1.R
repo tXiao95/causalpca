@@ -67,7 +67,7 @@ reproduce_table_1 <- function(n_reps = 1, n = 200, p = 10) {
         beta_init = beta_mave, 
         b = b_val, 
         h = h_val,
-        max_iters = 100, 
+        max_iters = 1000, 
         SL = FALSE
       )
       
@@ -78,7 +78,7 @@ reproduce_table_1 <- function(n_reps = 1, n = 200, p = 10) {
         beta_init = beta_mave, 
         b = b_val, 
         h = h_val,
-        max_iters = 100, 
+        max_iters = 1000, 
         SL = FALSE,
         sigma2 = sigma2_true
       )
@@ -132,7 +132,7 @@ reproduce_table_1 <- function(n_reps = 1, n = 200, p = 10) {
 # Note: This will take some time depending on your C++ and BLAS optimizations
 results <- reproduce_table_1(n_reps = 500, n = 200, p = 10)
 
-resultspath <- here("outputs", "experiments", "reproducing_luo_and_cai_Table1.rds")
+resultspath <- here("outputs", "experiments", "reproducing_luo_and_cai_Table1_500iterations.rds")
 saveRDS(results, resultspath)
 
 tab <- readRDS(resultspath)
