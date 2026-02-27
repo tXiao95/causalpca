@@ -113,14 +113,16 @@ run_scaling_experiment <- function(n_reps = 500, p = 12) {
 # Execute the experiment
 # Warning: Monitor cluster memory usage closely for n >= 50,000
 scaling_results <- run_scaling_experiment(n_reps = 5, p = 12)
-#scaling_results <- run_scaling_experiment(n_reps = 1, p = 12)
+resultspath <- here("outputs", "experiments", "scaling_runtimes_Model4_p12_50K.rds")
+resultspathplot <- here("outputs", "experiments", "scaling_runtimes_Model4_p12_50K.pdf")
 
 dt <- data.table(scaling_results)
 dt <- dt[, .(dist_F = mean(Frobenius_Dist), 
              dist_F_sd = sd(Frobenius_Dist),
-       runtime_min = mean(Runtime_Secs / 60),
-       runtime_min_sd = sd(Runtime_Secs / 60)), by = .(n, Method)]
+             runtime_min = mean(Runtime_Secs / 60),
+             runtime_min_sd = sd(Runtime_Secs / 60)), by = .(n, Method)]
 
+dt <- readRDS(resultspath)
 
 # Plot power law ----------------------------------------------------------
 
@@ -172,5 +174,5 @@ ggplot() +
     text = element_text(size = 12)
   )
 # Save the raw data
-resultspath <- here("outputs", "experiments", "scaling_runtimes_Model4_p12_50K.rds")
 saveRDS(dt, resultspath)
+ggsave(resultspathplot)
