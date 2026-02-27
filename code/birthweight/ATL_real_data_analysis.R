@@ -8,7 +8,7 @@ source(here("R", "estimate_ERS.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 N <- as.numeric(args[1])
-N <- 450
+#N <- 150
 
 # Setup -------------------------------------------------------------------
 
@@ -106,7 +106,7 @@ SL.lib <- c(
 # 7 minutes for training
 start_time <- proc.time()
 out_model_X <- outcome_model(Y = dat_sampled$grams, 
-                             X = dat_sampled[, ..X_vars], 
+                             X = (dat_sampled[, ..X_vars]), 
                              C = dat_sampled[, ..C_vars], 
                              mu_fitter = SL_outcome_fitter, 
                              SL.lib = SL.lib, 
@@ -125,7 +125,7 @@ mu_X <- estimate_ERS(Y = dat_sampled$grams,
 
 gcomp_time <- proc.time() - start_time
 
-dat_sampled$mu_X <- mu_X
+dat_sampled$mu_X <- mu_X$results$estimate
 
 form     <- reformulate(X_vars, response = "mu_X")
 start_time <- proc.time()
