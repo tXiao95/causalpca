@@ -8,7 +8,7 @@
 #' @param delta_n Small positive threshold to floor propensity scores. Defaults to 1e-4.
 #' @return A numeric vector of pseudo-outcomes (length n).
 
-estimate_pseudo_outcomes <- function(Y, X, C, out_model, gps_model, delta_n = 1e-4) {
+estimate_pseudo_outcomes <- function(Y, X, C, out_model, gps_model, delta_n = 1e-16) {
   
   # ---------------------------------------------------------
   # Input Validation & Safe Column Naming

@@ -12,7 +12,11 @@
 #' @param delta_n Small positive threshold to floor propensity scores. Defaults to 1e-4.
 #' @param optimize_bw Logical. If TRUE and estimator is "DR", dynamically calculates the AMSE-optimal 
 #'        bandwidth using pilot estimates, undersmooths it, and re-estimates. Defaults to FALSE.
-#' @return A list containing a 'results' data frame (estimates and CIs) and 'metadata' (diagnostics).
+#' @param return_vector Logical. If TRUE, forces DR to return only a numeric vector of point estimates. 
+#'        RA and IPW always return a numeric vector regardless of this setting. Defaults to FALSE.
+#'        
+#' @return A list containing a 'results' data frame (estimates and CIs) and 'metadata' (diagnostics), 
+#'         OR a numeric vector of estimates if return_vector is TRUE or estimator is RA/IPW.
 
 estimate_ERS <- function(Y, X, C, x_eval = NULL, 
                          estimator = c("DR", "RA", "IPW"), 
@@ -20,8 +24,9 @@ estimate_ERS <- function(Y, X, C, x_eval = NULL,
                          gps_model = NULL, 
                          h = NULL, 
                          c_multiplier = 1.25,
-                         delta_n = 1e-4,
-                         optimize_bw = FALSE) {
+                         delta_n = 1e-16,
+                         optimize_bw = FALSE,
+                         return_vector = FALSE) {
   
   estimator <- match.arg(estimator)
   
@@ -179,8 +184,6 @@ estimate_ERS <- function(Y, X, C, x_eval = NULL,
       if (optimize_bw) {
         # Step 1: Pilot Variance
         res_pilot <- compute_dr(h_pilot)
-        # Note: var(psi_i) asymptotically scales with 1/prod(h), so multiplying 
-        # by prod(h) backs out the exact Colangelo/Lee theoretical V_t constant.
         V_t <- prod(h_pilot) * res_pilot$var_psi  
         
         # Step 2: Leading Bias (using b = 2h and a = 0.5)
@@ -222,6 +225,13 @@ estimate_ERS <- function(Y, X, C, x_eval = NULL,
   # Format and Return Final Output
   # ---------------------------------------------------------
   res_matrix <- do.call(rbind, lapply(loop_out, `[[`, "row"))
+  
+  # EXPLICIT BYPASS: Return simple vector for RA, IPW, or if return_vector is TRUE
+  if (estimator %in% c("RA", "IPW") || return_vector) {
+    return(as.numeric(res_matrix[, "estimate"]))
+  }
+  
+  # Otherwise, assemble and return the full detailed DR object
   bw_matrix  <- do.call(rbind, lapply(loop_out, `[[`, "h"))
   
   results_df <- cbind(x_eval_df, as.data.frame(res_matrix), as.data.frame(bw_matrix))

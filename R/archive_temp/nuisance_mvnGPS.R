@@ -71,7 +71,7 @@ mvnGPS <- function(X, C, method = c("linear", "SuperLearner"), ...) {
 #' @param ... Additional arguments (ignored, but kept for S3 consistency).
 #' @return A numeric vector of estimated conditional densities f(X | C).
 
-predict.mvnGPS <- function(object, newdata, delta_n = 1e-4, ...) {
+predict.mvnGPS <- function(object, newdata, delta_n = 1e-16, ...) {
   newdata_df <- as.data.frame(newdata)
   
   X_new <- newdata_df[, 1:object$p, drop = FALSE] |> as.matrix()
