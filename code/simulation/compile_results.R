@@ -225,7 +225,7 @@ create_table_ee_comparison <- function(dt_sub, eval_type = "d0") {
 # =========================================================================
 
 # Define directory and load data
-dir      <- paste0("jasa-initial-submission/baseline")
+dir      <- paste0("jasa-initial-submission/weak_dim_signal")
 sim_path <- here("outputs", "simulation", dir)
 dt_sub   <- prep_sim_data(sim_path)
 

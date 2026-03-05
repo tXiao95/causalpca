@@ -92,33 +92,86 @@ evaluate_method_group <- function(group, sim, n, task_id) {
     err_ee_dhat <- if(dhat_m >= 1) Delta(beta0, b_ee_dhat, "F") else NA
     results[[4]] <- format_res("EE", err_ee_d0, err_ee_dhat, t_ee["elapsed"], NA)
     
-  } else if (group %in% c("RA", "DR", "PO", "RP")) {
-    message("Running method ", group)
-    # 1. Run the unified csMAVE pipeline once for the family
-    t_mave <- system.time({
-      obj <- csMAVE(Y = Y, X = X, C = C, method = group,
-                    args_compute_new_response = list(
-                      outcome_fitter = well_specified_outcome_fitter,
-                      gps_fitter     = well_specified_gps_fitter,
-                      C_fitter       = well_specified_C_fitter,
-                      L              = 5 # 5-fold cross-fitting
-                    ),
-                    args_MAVE = list(method = "meanMAVE"))
+  } else if (group == "RA_DR_PO") {
+    message("Running Causal Pipeline (RA, DR, PO)...")
+    causal_methods <- c("RA", "DR", "PO")
+    
+    # 1. Unified Cross-Fitting (Fits out_mod and gps_mod ONCE per fold)
+    t_cre <- system.time({
+      cre_obj <- compute_new_response_and_exposure(
+        Y = Y, X = X, C = C, 
+        method = causal_methods,
+        L = 5,
+        outcome_fitter = well_specified_outcome_fitter,
+        gps_fitter     = well_specified_gps_fitter
+        # C_fitter intentionally omitted!
+      )
     })
     
-    dhat_m <- obj$d_hat
-    err_mave_d0 <- Delta(beta0, obj$mave_fit$dir[[d0]], "F")
-    err_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, obj$mave_fit$dir[[dhat_m]], "F") else NA
-    results[[1]] <- format_res(paste0(group, "-MAVE"), err_mave_d0, err_mave_dhat, t_mave["elapsed"], dhat_m)
+    # Divide the nuisance modeling time evenly among the 3 methods
+    amortized_cre_time <- t_cre["elapsed"] / length(causal_methods)
     
-    # 2. Run EE on the generated pseudo-data
-    new_Y <- obj$new_data$new_Y; new_X <- obj$new_data$new_X
-    t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(new_X, new_Y, beta_init = obj$mave_fit$dir[[d0]]) })
-    b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(new_X, new_Y, beta_init = obj$mave_fit$dir[[dhat_m]]) else NA
+    # 2. Loop over the generated pseudo-datasets to run MAVE and EE
+    causal_results <- lapply(causal_methods, function(m) {
+      new_Y <- cre_obj$new_Y[[m]]
+      new_X <- cre_obj$new_X[[m]]
+      df <- data.frame(newY = new_Y, new_X)
+      
+      t_mave <- system.time({ reg_MAVE <- MAVE::mave(newY ~ ., data = df, method = "meanMAVE") })
+      dhat_m <- MAVE::mave.dim(reg_MAVE)$dim.min
+      err_mave_d0 <- Delta(beta0, reg_MAVE$dir[[d0]], "F")
+      err_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, reg_MAVE$dir[[dhat_m]], "F") else NA
+      
+      total_mave_time <- amortized_cre_time + t_mave["elapsed"]
+      res_mave <- format_res(paste0(m, "-MAVE"), err_mave_d0, err_mave_dhat, total_mave_time, dhat_m)
+      
+      t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(new_X, new_Y, beta_init = reg_MAVE$dir[[d0]]) })
+      b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(new_X, new_Y, beta_init = reg_MAVE$dir[[dhat_m]]) else NA
+      
+      err_ee_d0 <- Delta(beta0, b_ee_d0, "F")
+      err_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, b_ee_dhat, "F") else NA
+      res_ee <- format_res(paste0(m, "-EE"), err_ee_d0, err_ee_dhat, t_ee["elapsed"], NA)
+      
+      return(rbind(res_mave, res_ee))
+    })
+    
+    results <- causal_results
+    
+  } else if (group == "RP") {
+    message("Running Residualized Pair (RP)...")
+    
+    # 1. Fit C_mod ONCE
+    t_cre <- system.time({
+      cre_obj <- compute_new_response_and_exposure(
+        Y = Y, X = X, C = C, 
+        method = "RP",
+        L = 5,
+        C_fitter = well_specified_C_fitter
+        # outcome_fitter and gps_fitter intentionally omitted!
+      )
+    })
+    
+    # 2. Run MAVE and EE
+    new_Y <- cre_obj$new_Y
+    new_X <- cre_obj$new_X
+    df <- data.frame(newY = new_Y, new_X)
+    
+    t_mave <- system.time({ reg_MAVE <- MAVE::mave(newY ~ ., data = df, method = "meanMAVE") })
+    dhat_m <- MAVE::mave.dim(reg_MAVE)$dim.min
+    err_mave_d0 <- Delta(beta0, reg_MAVE$dir[[d0]], "F")
+    err_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, reg_MAVE$dir[[dhat_m]], "F") else NA
+    
+    total_mave_time <- t_cre["elapsed"] + t_mave["elapsed"]
+    res_mave <- format_res("RP-MAVE", err_mave_d0, err_mave_dhat, total_mave_time, dhat_m)
+    
+    t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(new_X, new_Y, beta_init = reg_MAVE$dir[[d0]]) })
+    b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(new_X, new_Y, beta_init = reg_MAVE$dir[[dhat_m]]) else NA
     
     err_ee_d0 <- Delta(beta0, b_ee_d0, "F")
     err_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, b_ee_dhat, "F") else NA
-    results[[2]] <- format_res(paste0(group, "-EE"), err_ee_d0, err_ee_dhat, t_ee["elapsed"], NA)
+    res_ee <- format_res("RP-EE", err_ee_d0, err_ee_dhat, t_ee["elapsed"], NA)
+    
+    results[[1]] <- rbind(res_mave, res_ee)
     
   } else if (group == "Oracle") {
     message("Running Oracle")
@@ -149,11 +202,12 @@ main <- function() {
   
   # Actual simulation
   N_vector <- c(100, 500, 1000, 2500, 5000)
-  groups   <- c("Base", "RA", "DR", "PO", "RP", "Oracle")
+  groups   <- c("Base", "RA_DR_PO", "RP", "Oracle")
   
   # For testing
   #N_vector <- c(100, 500, 1000)
   #N_vector <- c(100)
+  #groups   <- c("Base", "RA_DR_PO", "RP", "Oracle")
   #groups   <- c("Base", "RA")
   
   # Retrieve number of cores from SLURM environment for parallelization
@@ -170,11 +224,11 @@ main <- function() {
                                  q = 5,
                                  rho_X = 0.7,
                                  causal_conf_strength = 1.0,   # Keeps Z bounded in [-3, 3] grid
-                                 spurious_strength = 2.0,      # Keeps the MAVE trap strong
+                                 spurious_strength = 5.0,      # Keeps the MAVE trap strong
                                  var_scale = 5,                # Keeps the PCA trap strong
                                  signal_multiplier = 2.0,      # Knob 1: ERS Signal strength
                                  noise_sd = 0.5,               # Knob 2: Noise strength (SNR control)
-                                 interaction_coef = 10,        # Huge misleading interaction
+                                 interaction_coef = 2,        # Huge misleading interaction
                                  heteroskedastic = FALSE) 
     }
     
@@ -184,7 +238,7 @@ main <- function() {
                                  q = 5,
                                  rho_X = 0.7,
                                  causal_conf_strength = 1.0,   
-                                 spurious_strength = 2.0,      
+                                 spurious_strength = 5.0,      
                                  var_scale = 5,                
                                  signal_multiplier = 2.0,      
                                  noise_sd = 0.5,               

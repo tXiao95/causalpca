@@ -5,7 +5,7 @@ library(mvtnorm)
 # (Assume your outcome_model, mvnGPS, and estimate_ERS functions are loaded)
 source("R/estimate_ERS.R")
 source("R/nuisance_outcome_regression.R")
-source("R/nuisance_mvnGPS.R")
+source("R/nuisance_gps.R")
 
 test_that("estimate_ERS correctly recovers the true causal mean and handles bandwidth optimization", {
   
@@ -13,7 +13,7 @@ test_that("estimate_ERS correctly recovers the true causal mean and handles band
   # 1. Setup Data with a Known Causal Truth
   # ---------------------------------------------------------
   set.seed(42)
-  n <- 1000 # Increased slightly to ensure kernel smoothing has enough local data
+  n <- 5000 # Increased slightly to ensure kernel smoothing has enough local data
   p <- 2
   q <- 2
   
@@ -22,7 +22,7 @@ test_that("estimate_ERS correctly recovers the true causal mean and handles band
   colnames(C) <- c("C1", "C2")
   
   # Treatments (Confounded by C)
-  X <- C + rmvnorm(n, sigma = diag(p))
+  X <- C + mvtnorm::rmvnorm(n, sigma = diag(p))
   colnames(X) <- c("X1", "X2")
   
   # Outcome (Y = C1 + C2 + X1 + X2 + noise)
@@ -41,9 +41,13 @@ test_that("estimate_ERS correctly recovers the true causal mean and handles band
   suppressWarnings({
     out_mod <- outcome_model(Y = Y, X = X, C = C, 
                              mu_fitter = SL_outcome_fitter, 
-                             SL.library = "SL.glm")
+                             SL.lib = "SL.glm")
   })
-  gps_mod <- mvnGPS(X = X, C = C, method = "linear")
+  
+  # UPDATED: Use the new generalized gps_model wrapper with mvn_fitter
+  gps_mod <- gps_model(X = X, C = C, 
+                       pi_fitter = mvn_fitter, 
+                       method_gps = "linear")
   
   # ---------------------------------------------------------
   # 3. Test Estimators against the True Causal Mean

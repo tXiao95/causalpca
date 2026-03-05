@@ -3,7 +3,7 @@
 #' @param Y Numeric vector of outcomes (length n).
 #' @param X Numeric matrix or data frame of observed treatments (n x p).
 #' @param C Numeric matrix or data frame of observed confounders (n x q).
-#' @param method String indicating which method to use ("RA", "DR", "PO", "RP").
+#' @param method String or vector indicating methods to use (e.g., "DR" or c("RA", "DR", "PO", "RP")).
 #' @param L Integer indicating the number of folds for cross-fitting. Defaults to 5.
 #' @param outcome_fitter Function to train outcome models. Required for RA, DR, PO.
 #' @param C_fitter Function to train nuisance models. Required for RP.
@@ -16,7 +16,7 @@
 #' @return A list containing `new_Y`, `new_X`, and `metadata`.
 
 compute_new_response_and_exposure <- function(Y, X, C, 
-                                              method = c("RA", "DR", "PO", "RP"), 
+                                              method = c("RA"), # Default to DR
                                               L = 5,
                                               outcome_fitter = SL_outcome_fitter,
                                               C_fitter = SL_nuisance_fitter,
@@ -27,7 +27,9 @@ compute_new_response_and_exposure <- function(Y, X, C,
                                               args_gps = list(),
                                               args_ers = list()) {
   
-  method <- match.arg(method)
+  # Allow multiple methods to be computed in a single cross-fitting pass
+  valid_methods <- c("RA", "DR", "PO", "RP")
+  method <- match.arg(method, choices = valid_methods, several.ok = TRUE)
   
   # ---------------------------------------------------------
   # 1. Input Validation and Setup
@@ -39,22 +41,22 @@ compute_new_response_and_exposure <- function(Y, X, C,
   
   if (is.null(colnames(X_mat))) colnames(X_mat) <- paste0("X", 1:p)
   
-  if (method %in% c("RA", "DR", "PO") && !is.function(outcome_fitter)) {
-    stop("A valid 'outcome_fitter' function must be provided for the ", method, " method.")
+  if (any(c("RA", "DR", "PO") %in% method) && !is.function(outcome_fitter)) {
+    stop("A valid 'outcome_fitter' must be provided for RA, DR, or PO.")
   }
-  if (method == "RP" && !is.function(C_fitter)) {
-    stop("A valid 'C_fitter' function must be provided for the RP method.")
+  if ("RP" %in% method && !is.function(C_fitter)) {
+    stop("A valid 'C_fitter' must be provided for RP.")
   }
-  if (method %in% c("DR", "PO") && !is.function(gps_fitter)) {
-    stop("A valid 'gps_fitter' function must be provided for the ", method, " method.")
+  if (any(c("DR", "PO") %in% method) && !is.function(gps_fitter)) {
+    stop("A valid 'gps_fitter' must be provided for DR or PO.")
   }
-  if( L == 1) warning("L=1 disables cross-fitting: nuisances and pseudo-outcomes use the same data.")
+  if( L == 1) warning("L=1 disables cross-fitting.")
   
   # ---------------------------------------------------------
-  # 2. Pre-allocate Output Structures
+  # 2. Pre-allocate Output Structures for ALL requested methods
   # ---------------------------------------------------------
-  new_Y <- rep(NA_real_, n)
-  new_X <- X_mat 
+  new_Y_list <- setNames(lapply(method, function(m) rep(NA_real_, n)), method)
+  new_X_list <- setNames(lapply(method, function(m) X_mat), method)
   
   set.seed(seed)
   folds <- sample(rep(1:L, length.out = n))
@@ -66,68 +68,49 @@ compute_new_response_and_exposure <- function(Y, X, C,
     train_idx <- if (L == 1L) seq_len(n) else which(folds != k)
     test_idx  <- if (L == 1L) seq_len(n) else which(folds == k)
     
-    Y_train <- Y[train_idx]
-    X_train <- X_mat[train_idx, , drop = FALSE]
-    C_train <- C_mat[train_idx, , drop = FALSE]
+    Y_train <- Y[train_idx]; X_train <- X_mat[train_idx, , drop = FALSE]; C_train <- C_mat[train_idx, , drop = FALSE]
+    Y_test  <- Y[test_idx];  X_test  <- X_mat[test_idx, , drop = FALSE];  C_test  <- C_mat[test_idx, , drop = FALSE]
     
-    Y_test <- Y[test_idx]
-    X_test <- X_mat[test_idx, , drop = FALSE]
-    C_test <- C_mat[test_idx, , drop = FALSE]
-    
-    # --- Step A: Estimate Necessary Nuisances on Training Data ---
-    
-    if (method %in% c("RA", "DR", "PO")) {
+    # --- Step A: Estimate Nuisances (Only once per requirement) ---
+    if (any(c("RA", "DR", "PO") %in% method)) {
       out_req_args <- list(Y = Y_train, X = X_train, C = C_train, mu_fitter = outcome_fitter)
       out_mod <- do.call(outcome_model, c(out_req_args, args_outcome))
     }
-    
-    if (method %in% c("DR", "PO")) {
+    if (any(c("DR", "PO") %in% method)) {
       gps_req_args <- list(X = X_train, C = C_train, pi_fitter = gps_fitter)
       gps_mod <- do.call(gps_model, c(gps_req_args, args_gps))
     }
-    
-    if (method == "RP") {
+    if ("RP" %in% method) {
       c_req_args <- list(Y = Y_train, X = X_train, C = C_train, fitter = C_fitter)
       C_mods <- do.call(train_nuisance_models, c(c_req_args, args_C))
     }
     
-    # --- Step B: Estimate New Response/Exposure on Test Data ---
-    
-    if (method == "RA") {
-      ra_req_args <- list(Y = Y_test, X = X_test, C = C_test, estimator = "RA", 
-                          out_model = out_mod, return_vector = TRUE)
-      new_Y[test_idx] <- do.call(estimate_ERS, c(ra_req_args, args_ers))
-      
-    } else if (method == "DR") {
-      dr_req_args <- list(Y = Y_test, X = X_test, C = C_test, estimator = "DR", 
-                          out_model = out_mod, gps_model = gps_mod, return_vector = TRUE)
-      new_Y[test_idx] <- do.call(estimate_ERS, c(dr_req_args, args_ers))
-      
-    } else if (method == "PO") {
-      # PO doesn't have an args_po list since it has no extra tuning params right now, 
-      # but standardizing the call is clean.
-      new_Y[test_idx] <- estimate_pseudo_outcomes(Y = Y_test, X = X_test, C = C_test, 
-                                                  out_model = out_mod, gps_model = gps_mod)
-      
-    } else if (method == "RP") {
-      res_rp <- estimate_residualized_pair(Y = Y_test, X = X_test, C = C_test, C_models = C_mods)
-      new_Y[test_idx] <- res_rp$Ytilde
-      new_X[test_idx, ] <- res_rp$Xtilde
+    # --- Step B: Generate Pseudo-Data for each requested method ---
+    if ("RA" %in% method) {
+      new_Y_list[["RA"]][test_idx] <- do.call(estimate_ERS, c(list(Y=Y_test, X=X_test, C=C_test, estimator="RA", out_model=out_mod, return_vector=TRUE), args_ers))
+    }
+    if ("DR" %in% method) {
+      new_Y_list[["DR"]][test_idx] <- do.call(estimate_ERS, c(list(Y=Y_test, X=X_test, C=C_test, estimator="DR", out_model=out_mod, gps_model=gps_mod, return_vector=TRUE), args_ers))
+    }
+    if ("PO" %in% method) {
+      new_Y_list[["PO"]][test_idx] <- estimate_pseudo_outcomes(Y=Y_test, X=X_test, C=C_test, out_model=out_mod, gps_model=gps_mod)
+    }
+    if ("RP" %in% method) {
+      res_rp <- estimate_residualized_pair(Y=Y_test, X=X_test, C=C_test, C_models=C_mods)
+      new_Y_list[["RP"]][test_idx] <- res_rp$Ytilde
+      new_X_list[["RP"]][test_idx, ] <- res_rp$Xtilde
     }
   }
   
   # ---------------------------------------------------------
   # 4. Final Output Formatting
   # ---------------------------------------------------------
-  return(list(
-    new_Y = new_Y,
-    new_X = as.matrix(new_X),
-    metadata = list(
-      method = method,
-      L_folds = L,
-      n = n,
-      p = p,
-      seed = seed
-    )
-  ))
+  meta <- list(method = method, L_folds = L, n = n, p = p, seed = seed)
+  
+  # Backwards compatibility: If only 1 method was requested, return flat lists
+  if (length(method) == 1) {
+    return(list(new_Y = new_Y_list[[1]], new_X = as.matrix(new_X_list[[1]]), metadata = meta))
+  } else {
+    return(list(new_Y = new_Y_list, new_X = lapply(new_X_list, as.matrix), metadata = meta))
+  }
 }
