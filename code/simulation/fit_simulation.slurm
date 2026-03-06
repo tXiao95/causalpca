@@ -9,7 +9,7 @@
 #SBATCH --mail-user=thsiao3@emory.edu
 #SBATCH --time=24:00:00
 #SBATCH --array=1-100
-#SBATCH --partition=short-cpu,chang,day-long-cpu,week-long-cpu
+#SBATCH --partition=chang,day-long-cpu,week-long-cpu
 #SBATCH --output=/scratch/thsiao3/output/sim_CSDR_%A_%a.out
 #SBATCH --error=/scratch/thsiao3/error/sim_CSDR_%A_%a.err
 

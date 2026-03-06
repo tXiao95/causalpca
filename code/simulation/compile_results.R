@@ -3,11 +3,6 @@ library(gt)
 library(ggplot2)
 library(here)
 
-experiments <- c("baseline",
-                 "additive-confounding",
-                 "high-SNR",
-                 "weak-dim-signal")
-
 # =========================================================================
 # 1. Data Processing Function
 # =========================================================================
@@ -225,40 +220,46 @@ create_table_ee_comparison <- function(dt_sub, eval_type = "d0") {
 # =========================================================================
 
 # Define directory and load data
-dir      <- paste0("jasa-initial-submission/weak_dim_signal")
-sim_path <- here("outputs", "simulation", dir)
-dt_sub   <- prep_sim_data(sim_path)
+main <- function(){
+  dir      <- paste0("jasa-initial-submission/", EXPERIMENT)
+  sim_path <- here("outputs", "simulation", dir)
+  dt_sub   <- prep_sim_data(sim_path)
+  
+  # Generate and print main tables
+  gt_table_frob_d0 <- create_table_frob_d0(dt_sub)
+  
+  gt_table_frob_dhat <- create_table_frob_dhat(dt_sub)
+  
+  gt_table_dhat <- create_table_dhat(dt_sub)
+  
+  gt_table_runtime <- create_table_runtime(dt_sub)
+  
+  # Generate and print EE Comparison tables
+  gt_comp_d0 <- create_table_ee_comparison(dt_sub, eval_type = "d0")
+  
+  gt_comp_dhat <- create_table_ee_comparison(dt_sub, eval_type = "dhat")
+  
+  # Save all objects
+  table_list <- list(frob_d0   = gt_table_frob_d0,
+                     frob_dhat = gt_table_frob_dhat,
+                     dhat      = gt_table_dhat,
+                     runtime   = gt_table_runtime,
+                     comp_d0   = gt_comp_d0,
+                     comp_dhat = gt_comp_dhat)
+  
+  # Ensure results directory exists
+  out_dir <- here("results/jasa-initial-submission", EXPERIMENT)
+  if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+  
+  saveRDS(table_list, file.path(out_dir, "simulation_gt_tables.rds"))
+}
 
-# Generate and print main tables
-gt_table_frob_d0 <- create_table_frob_d0(dt_sub)
-print(gt_table_frob_d0)
+# Main code ---------------------------------------------------------------
 
-gt_table_frob_dhat <- create_table_frob_dhat(dt_sub)
-print(gt_table_frob_dhat)
+if(interactive()){
+  EXPERIMENT <- "baseline_new"
+} else{
+  EXPERIMENT <- as.character( args(commandArgs(trailingOnly = TRUE))[1] )
+}
 
-gt_table_dhat <- create_table_dhat(dt_sub)
-print(gt_table_dhat)
-
-gt_table_runtime <- create_table_runtime(dt_sub)
-print(gt_table_runtime)
-
-# Generate and print EE Comparison tables
-gt_comp_d0 <- create_table_ee_comparison(dt_sub, eval_type = "d0")
-print(gt_comp_d0)
-
-gt_comp_dhat <- create_table_ee_comparison(dt_sub, eval_type = "dhat")
-print(gt_comp_dhat)
-
-# Save all objects
-table_list <- list(frob_d0   = gt_table_frob_d0,
-                   frob_dhat = gt_table_frob_dhat,
-                   dhat      = gt_table_dhat,
-                   runtime   = gt_table_runtime,
-                   comp_d0   = gt_comp_d0,
-                   comp_dhat = gt_comp_dhat)
-
-# Ensure results directory exists
-out_dir <- here("results/jasa-initial-submission")
-if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
-saveRDS(table_list, file.path(out_dir, "simulation_gt_tables.rds"))
+main()

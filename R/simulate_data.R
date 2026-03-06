@@ -247,3 +247,92 @@ simulate_causal_sdr <- function(n = 1000,
        h_Z_fun = h_Z_fun, 
        d = ncol(beta))
 }
+
+#' Minimal First-Principles Causal SDR Simulation (With Correlation & Interactions)
+#' 
+#' @param n Sample size
+#' @param p Number of exposures (default 10)
+#' @param q Number of confounders (default 5)
+#' @param noise_sd Noise level for the outcome
+#' @param rho_X Autoregressive correlation between X variables
+#' @param interaction_coef Strength of the interaction (Set to 0 for RP to work, >0 for RP to fail)
+#' @return A list of data and true structural components
+
+simulate_causal_sdr_simple <- function(n = 1000, 
+                                       p = 10, 
+                                       q = 5, 
+                                       noise_sd = 0.5,
+                                       rho_X = 0.5,
+                                       interaction_coef = 0.0) {
+  
+  if (p < 6) stop("p must be >= 6 to accommodate causal, MAVE traps, and PCA traps.")
+  if (q < 5) stop("q must be >= 5 to accommodate the confounding structures and interactions.")
+  
+  # 1. Confounders (Independent Standard Normal)
+  C <- matrix(rnorm(n * q), nrow = n, ncol = q)
+  colnames(C) <- paste0("C", 1:q)
+  
+  # 2. Exposures (X) with AR(1) Correlation
+  R <- toeplitz(rho_X^(0:(p-1))) # Base AR(1) Correlation Matrix
+  
+  # Scale variance: Massive variance for X5 and X6 to bait PCA
+  scale_vec <- rep(1, p)
+  scale_vec[5:6] <- 10.0 
+  D <- diag(scale_vec, p, p)
+  
+  Sigma_X <- D %*% R %*% D # Final Covariance Matrix
+  
+  # Mean of X given C
+  mu_X_cond <- matrix(0, nrow = n, ncol = p)
+  mu_X_cond[, 1] <- 0.5 * C[, 1]
+  mu_X_cond[, 2] <- 0.5 * C[, 2]
+  mu_X_cond[, 3] <- 3.0 * C[, 3] # MAVE Trap 1
+  mu_X_cond[, 4] <- 3.0 * C[, 4] # MAVE Trap 2
+  # X5 through Xp have conditional mean 0
+  
+  X <- mu_X_cond + MASS::mvrnorm(n, mu = rep(0, p), Sigma = Sigma_X)
+  colnames(X) <- paste0("X", 1:p)
+  
+  # 3. True Causal Directions (beta)
+  # The true causal subspace spans exactly X1 and X2. (d = 2)
+  beta <- matrix(0, nrow = p, ncol = 2)
+  beta[1, 1] <- 1
+  beta[2, 2] <- 1
+  
+  Z <- X %*% beta  
+  
+  # 4. Causal Exposure-Response Surface: h(Z)
+  h_Z_fun <- function(Z1, Z2) {
+    return( 4 * sin(Z1) + 2 * Z2^2 )
+  }
+  mu_causal <- h_Z_fun(Z[, 1], Z[, 2])
+  
+  # # 5. Additive Confounding Effect: g(C)
+  # # Massive direct associational effects to bait regular MAVE
+  # If new method doesn't work turn this back on. 
+  # g_C <- 5.0 * C[, 3] + 5.0 * C[, 4]
+  
+  # 5. Additive Confounding Effect: g(C)
+  # Nonlinear, symmetric direct effects to break linear adjustment
+  # E[C^2 - 1] = 0, and Cov(C, C^2 - 1) = 0 for Standard Normal
+  g_C <- 5.0 * (C[, 3]^2 - 1) + 5.0 * cos(1.5 * C[, 4])
+  
+  # 6. Interaction Trap (Breaks RP when > 0)
+  # Multiplied by C5. Because E[C5] = 0, the interventional mean E[Y(x)] is unchanged!
+  interaction_term <- interaction_coef * C[, 5] * (Z[, 1] + Z[, 2])
+  
+  # 7. Final Outcome Y
+  Y <- mu_causal + g_C + interaction_term + rnorm(n, 0, sd = noise_sd)
+  
+  # True Projection Matrix
+  P_beta <- beta %*% solve(t(beta) %*% beta) %*% t(beta)
+  
+  return(list(
+    Y = Y, C = C, X = X, Z = Z, 
+    mu_X = mu_causal, 
+    beta_true = beta, 
+    P_beta = P_beta, 
+    h_Z_fun = h_Z_fun, 
+    d = ncol(beta)
+  ))
+}

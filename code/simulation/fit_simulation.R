@@ -29,8 +29,7 @@ source(here("R/simulate_data.R"))
 # The DGP features non-linearities (tanh, pnorm) and interactions.
 # SL.earth (MARS) and SL.gam are excellent for smooth, bounded non-linear surfaces.
 well_specified_outcome_fitter <- function(Y, XC_df, ...) {
-  SL_outcome_fitter(Y, XC_df, SL.lib = c("SL.glm", "SL.glmnet", "SL.gam", 
-                                         "SL.earth", "SL.xgboost"), ...)
+  SL_outcome_fitter(Y, XC_df, SL.lib = c("SL.glm", "SL.glmnet", "SL.earth"), ...)
 }
 
 # 2. GPS Model: f(X | C)
@@ -259,6 +258,26 @@ main <- function() {
                                        heteroskedastic = FALSE)
     }
     
+    if(EXPERIMENT == "baseline_new"){
+      sim <- simulate_causal_sdr_simple (n = n, 
+                                         p = 10, 
+                                         q = 5, 
+                                         noise_sd = 0.5,
+                                         rho_X = 0.8,
+                                         interaction_coef = 5.0) 
+    }
+    
+    if(EXPERIMENT == "additive_new"){
+      sim <- simulate_causal_sdr_simple (n = n, 
+                                         p = 10, 
+                                         q = 5, 
+                                         noise_sd = 0.5,
+                                         rho_X = 0.8,
+                                         interaction_coef = 0.0) 
+    }
+    
+    
+    
     # Run the families in parallel
     res_list <- mclapply(groups, function(g) {
       evaluate_method_group(group = g, sim = sim, n = n, task_id = TASK_ID)
@@ -280,7 +299,7 @@ main <- function() {
 if(interactive()){
   TASK_ID    <- 100
   N_CORES    <- 1
-  EXPERIMENT <- "baseline"
+  EXPERIMENT <- "baseline_new"
 } else{
   TASK_ID    <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
   N_CORES    <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 1))
