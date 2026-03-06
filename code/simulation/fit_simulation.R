@@ -204,9 +204,8 @@ main <- function() {
   groups   <- c("Base", "RA_DR_PO", "RP", "Oracle")
   
   # For testing
-  #N_vector <- c(100, 500, 1000)
   #N_vector <- c(100)
-  #groups   <- c("Base", "RA_DR_PO", "RP", "Oracle")
+  #groups   <- c("Base", "RA_DR_PO", "Oracle")
   #groups   <- c("Base", "RA")
   
   # Retrieve number of cores from SLURM environment for parallelization
@@ -216,67 +215,35 @@ main <- function() {
     message("\nSimulation experiment with sample size ", n)
     set.seed(TASK_ID)
     
-    # Baseline experiment parameters
-    if(EXPERIMENT == "baseline"){
-      sim <- simulate_causal_sdr(n = n, 
-                                 p = 10,
-                                 q = 5,
-                                 rho_X = 0.7,
-                                 causal_conf_strength = 1.0,   # Keeps Z bounded in [-3, 3] grid
-                                 spurious_strength = 5.0,      # Keeps the MAVE trap strong
-                                 var_scale = 5,                # Keeps the PCA trap strong
-                                 signal_multiplier = 2.0,      # Knob 1: ERS Signal strength
-                                 noise_sd = 0.5,               # Knob 2: Noise strength (SNR control)
-                                 interaction_coef = 2,        # Huge misleading interaction
-                                 heteroskedastic = FALSE) 
+    if(EXPERIMENT == "weak_dim"){
+      sim <- simulate_causal_sdr_simple(n = n, 
+                                        p = 10, 
+                                        q = 5, 
+                                        noise_sd = 0.5,
+                                        rho_X = 0.8,
+                                        interaction_coef = 5.0,
+                                        weak_dim_signal = TRUE) 
     }
     
-    if(EXPERIMENT == "additive_confounding"){
-      sim <- simulate_causal_sdr(n = n, 
-                                 p = 10,
-                                 q = 5,
-                                 rho_X = 0.7,
-                                 causal_conf_strength = 1.0,   
-                                 spurious_strength = 5.0,      
-                                 var_scale = 5,                
-                                 signal_multiplier = 2.0,      
-                                 noise_sd = 0.5,               
-                                 interaction_coef = 0,         # Turning off interaction between X and C
-                                 heteroskedastic = FALSE) 
+    if(EXPERIMENT == "interaction"){
+      sim <- simulate_causal_sdr_simple(n = n, 
+                                        p = 10, 
+                                        q = 5, 
+                                        noise_sd = 0.5,
+                                        rho_X = 0.8,
+                                        interaction_coef = 5.0,
+                                        weak_dim_signal = FALSE) 
     }
     
-    if(EXPERIMENT == "weak_dim_signal"){
-      sim <- simulate_weak_dim_signal (n = n,
-                                       p = 10,
-                                       q = 5,
-                                       rho_X = 0.3,
-                                       confounding_strength = 3,
-                                       spurious_strength = 6,
-                                       var_scale = 5,            
-                                       interaction_coef = 1,
-                                       sigma2 = 0.25,
-                                       heteroskedastic = FALSE)
+    if(EXPERIMENT == "additive"){
+      sim <- simulate_causal_sdr_simple(n = n, 
+                                        p = 10, 
+                                        q = 5, 
+                                        noise_sd = 0.5,
+                                        rho_X = 0.8,
+                                        interaction_coef = 0.0, # Turn off interaction b/w Z and C
+                                        weak_dim_signal = FALSE) 
     }
-    
-    if(EXPERIMENT == "baseline_new"){
-      sim <- simulate_causal_sdr_simple (n = n, 
-                                         p = 10, 
-                                         q = 5, 
-                                         noise_sd = 0.5,
-                                         rho_X = 0.8,
-                                         interaction_coef = 5.0) 
-    }
-    
-    if(EXPERIMENT == "additive_new"){
-      sim <- simulate_causal_sdr_simple (n = n, 
-                                         p = 10, 
-                                         q = 5, 
-                                         noise_sd = 0.5,
-                                         rho_X = 0.8,
-                                         interaction_coef = 0.0) 
-    }
-    
-    
     
     # Run the families in parallel
     res_list <- mclapply(groups, function(g) {
@@ -299,7 +266,7 @@ main <- function() {
 if(interactive()){
   TASK_ID    <- 100
   N_CORES    <- 1
-  EXPERIMENT <- "baseline_new"
+  EXPERIMENT <- "weak_dim"
 } else{
   TASK_ID    <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
   N_CORES    <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 1))

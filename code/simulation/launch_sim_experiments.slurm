@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the experiments
-EXPERIMENTS=("baseline" "additive_confounding" "weak_dim_signal")
+EXPERIMENTS=("interaction" "additive" "weak_dim")
 
 # Define the SLURM script to execute (update this if your slurm file is named differently)
 SLURM_SCRIPT="fit_simulation.slurm"
@@ -21,7 +21,7 @@ for EXP in "${EXPERIMENTS[@]}"; do
     
     sbatch \
         --job-name="sim_${EXP}" \
-        --array=1-100 \
+        --array=1-1000 \
         --output="/scratch/thsiao3/output/sim_${EXP}_%A_%a.out" \
         --error="/scratch/thsiao3/error/sim_${EXP}_%A_%a.err" \
         "$SLURM_SCRIPT" "$EXP"

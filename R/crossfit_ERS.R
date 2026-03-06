@@ -1,3 +1,5 @@
+library(data.table)
+
 #' Estimate Cross-Fitted Causal Exposure Response Surface (Global Evaluation)
 #'
 #' @param Y Numeric vector of observed outcomes (length n).
