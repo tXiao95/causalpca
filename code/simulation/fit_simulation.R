@@ -7,6 +7,7 @@ library(MAVE)
 source(here("R/pCCA.R"))
 source(here("R/csMAVE.R"))
 source(here("R/Seff.R"))
+source(here("R/crossfit_ERS.R"))
 source(here("R/compute_new_response_and_exposure.R"))
 
 source(here("R/estimate_ERS.R"))
@@ -50,144 +51,176 @@ well_specified_C_fitter <- function(target, C_df, ...) {
 # Evaluation Module for Parallel Processing
 # -------------------------------------------------------------------------
 
-evaluate_method_group <- function(group, sim, n, task_id) {
+evaluate_method_group <- function(group, sim, n, task_id, x_eval_fixed, mu_true_fixed) {
   
   Y <- sim$Y; X <- sim$X; C <- sim$C
   beta0 <- sim$beta_true
   d0 <- sim$d
+  p_dims <- ncol(X)
+  n_eval <- nrow(x_eval_fixed)
   
-  # Helper to structure the output data.table
-  format_res <- function(method_name, frob_d0, frob_dhat, time_elapsed, dhat_val) {
-    data.table(
-      ID = task_id, n = n, method = method_name, time = time_elapsed, dhat = dhat_val,
-      error_type = c("d0", "dhat"), frob_norm = c(frob_d0, frob_dhat)
-    )
+  # ========================================================================
+  # HELPER FUNCTIONS
+  # ========================================================================
+  
+  # 1. Format Error DT
+  format_err <- function(method, frob_d0, frob_dhat, time, dhat_val) {
+    data.table(ID = task_id, n = n, method = method, time = time, dhat = dhat_val,
+               error_type = c("d0", "dhat"), frob_norm = c(frob_d0, frob_dhat))
   }
   
-  results <- list()
+  # 2. Format Diagonal DT (Long Format)
+  format_diag <- function(method, b_d0) {
+    if (!is.matrix(b_d0) || any(is.na(b_d0))) {
+      diag_vals <- rep(NA_real_, p_dims)
+    } else {
+      Q <- tryCatch(qr.Q(qr(b_d0)), error = function(e) b_d0)
+      diag_vals <- diag(tcrossprod(Q))
+    }
+    data.table(ID = task_id, n = n, method = method, dimension = 1:p_dims, P_diag_val = diag_vals)
+  }
+  
+  # 3. Evaluate ERS DT (Wide Format for Z, est, CIs)
+  evaluate_ers_dt <- function(method, b_hat) {
+    dt <- data.table(ID = task_id, n = n, method = method, eval_id = 1:n_eval)
+    for(j in 1:p_dims) dt[[paste0("X_", j)]] <- x_eval_fixed[, j]
+    dt$mu_true <- mu_true_fixed
+    for(j in 1:p_dims) dt[[paste0("Z_", j)]] <- NA_real_
+    dt[, c("est", "ci_lower", "ci_upper")] <- NA_real_
+    
+    if (!is.matrix(b_hat) || any(is.na(b_hat))) return(dt)
+    
+    Z_train <- X %*% b_hat
+    z_eval  <- x_eval_fixed %*% b_hat
+    
+    for(j in 1:ncol(b_hat)) dt[[paste0("Z_", j)]] <- z_eval[, j]
+    
+    res <- tryCatch({
+      suppressWarnings({
+        crossfit_ERS(Y = Y, X = Z_train, C = C, x_eval = z_eval, 
+                     estimator = "DR", L = 5, optimize_bw = TRUE,
+                     outcome_fitter = well_specified_outcome_fitter,
+                     gps_fitter = well_specified_gps_fitter)
+      })
+    }, error = function(e) NULL)
+    
+    if(!is.null(res) && !is.null(res$results)) {
+      dt$est <- res$results$estimate
+      dt$ci_lower <- res$results$ci_lower
+      dt$ci_upper <- res$results$ci_upper
+    }
+    return(dt)
+  }
+  
+  # 4. Unified Recorder (Bundles all 3 steps seamlessly)
+  record_method <- function(name, b_d0, b_dhat, time, dhat_val, do_ers = TRUE) {
+    err_dt  <- format_err(name, Delta(beta0, b_d0, "F"), 
+                          if(is.matrix(b_dhat)) Delta(beta0, b_dhat, "F") else NA, 
+                          time, dhat_val)
+    diag_dt <- format_diag(name, b_d0)
+    ers_dt  <- if(do_ers) evaluate_ers_dt(name, b_dhat) else data.table()
+    
+    list(err = err_dt, diag = diag_dt, ers = ers_dt)
+  }
+  
+  # ========================================================================
+  # METHOD EVALUATION
+  # ========================================================================
+  res_lists <- list()
   
   if (group == "Base") {
     message("Running baseline methods")
-    # PCA
+    
     t_pca <- system.time({ pca <- prcomp(X, center = TRUE, scale. = FALSE) })
-    b_pca <- pca$rotation[, 1:d0, drop = FALSE]
-    results[[1]] <- format_res("PCA", Delta(beta0, b_pca, "F"), NA, t_pca["elapsed"], NA)
+    res_lists[[length(res_lists) + 1]] <- record_method("PCA", pca$rotation[, 1:d0, drop = FALSE], NA, t_pca["elapsed"], NA, do_ers = FALSE)
     
-    # pCCA
     t_pcca <- system.time({ b_pcca <- pCCA(Y, X, C)[, 1:d0, drop = FALSE] })
-    results[[2]] <- format_res("pCCA", Delta(beta0, b_pcca, "F"), NA, t_pcca["elapsed"], NA)
+    res_lists[[length(res_lists) + 1]] <- record_method("pCCA", b_pcca, b_pcca, t_pcca["elapsed"], d0, do_ers = TRUE)
     
-    # MAVE
     t_mave <- system.time({ reg_MAVE <- MAVE::mave(Y ~ X, method = "meanMAVE") })
     dhat_m <- MAVE::mave.dim(reg_MAVE)$dim.min
-    err_mave_d0 <- Delta(beta0, reg_MAVE$dir[[d0]], "F")
-    err_mave_dhat <- if(dhat_m >= 1) Delta(beta0, reg_MAVE$dir[[dhat_m]], "F") else NA
-    results[[3]] <- format_res("MAVE", err_mave_d0, err_mave_dhat, t_mave["elapsed"], dhat_m)
+    b_mave_d0 <- reg_MAVE$dir[[d0]]
+    b_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) reg_MAVE$dir[[dhat_m]] else NA
+    res_lists[[length(res_lists) + 1]] <- record_method("MAVE", b_mave_d0, b_mave_dhat, t_mave["elapsed"], dhat_m, do_ers = TRUE)
     
-    # EE
-    t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(X, Y, beta_init = reg_MAVE$dir[[d0]]) })
-    b_ee_dhat <- if(dhat_m >= 1) run_efficient_estimator(X, Y, beta_init = reg_MAVE$dir[[dhat_m]]) else NA
-    err_ee_d0 <- Delta(beta0, b_ee_d0, "F")
-    err_ee_dhat <- if(dhat_m >= 1) Delta(beta0, b_ee_dhat, "F") else NA
-    results[[4]] <- format_res("EE", err_ee_d0, err_ee_dhat, t_ee["elapsed"], NA)
+    t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(X, Y, beta_init = b_mave_d0) })
+    b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(X, Y, beta_init = b_mave_dhat) else NA
+    res_lists[[length(res_lists) + 1]] <- record_method("EE", b_ee_d0, b_ee_dhat, t_ee["elapsed"], NA, do_ers = FALSE)
+    
+    # Full X Benchmark (Only ERS)
+    res_lists[[length(res_lists) + 1]] <- list(err = data.table(), diag = data.table(), ers = evaluate_ers_dt("Full_X", diag(p_dims)))
     
   } else if (group == "RA_DR_PO") {
     message("Running Causal Pipeline (RA, DR, PO)...")
     causal_methods <- c("RA", "DR", "PO")
     
-    # 1. Unified Cross-Fitting (Fits out_mod and gps_mod ONCE per fold)
     t_cre <- system.time({
-      cre_obj <- compute_new_response_and_exposure(
-        Y = Y, X = X, C = C, 
-        method = causal_methods,
-        L = 5,
-        outcome_fitter = well_specified_outcome_fitter,
-        gps_fitter     = well_specified_gps_fitter
-        # C_fitter intentionally omitted!
-      )
+      cre_obj <- compute_new_response_and_exposure(Y = Y, X = X, C = C, method = causal_methods, L = 5,
+                                                   outcome_fitter = well_specified_outcome_fitter,
+                                                   gps_fitter = well_specified_gps_fitter)
     })
+    amortized_time <- t_cre["elapsed"] / length(causal_methods)
     
-    # Divide the nuisance modeling time evenly among the 3 methods
-    amortized_cre_time <- t_cre["elapsed"] / length(causal_methods)
-    
-    # 2. Loop over the generated pseudo-datasets to run MAVE and EE
-    causal_results <- lapply(causal_methods, function(m) {
-      new_Y <- cre_obj$new_Y[[m]]
-      new_X <- cre_obj$new_X[[m]]
+    for (m in causal_methods) {
+      new_X <- cre_obj$new_X[[m]]; new_Y <- cre_obj$new_Y[[m]]
       df <- data.frame(newY = new_Y, new_X)
       
       t_mave <- system.time({ reg_MAVE <- MAVE::mave(newY ~ ., data = df, method = "meanMAVE") })
       dhat_m <- MAVE::mave.dim(reg_MAVE)$dim.min
-      err_mave_d0 <- Delta(beta0, reg_MAVE$dir[[d0]], "F")
-      err_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, reg_MAVE$dir[[dhat_m]], "F") else NA
+      b_mave_d0 <- reg_MAVE$dir[[d0]]
+      b_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) reg_MAVE$dir[[dhat_m]] else NA
       
-      total_mave_time <- amortized_cre_time + t_mave["elapsed"]
-      res_mave <- format_res(paste0(m, "-MAVE"), err_mave_d0, err_mave_dhat, total_mave_time, dhat_m)
+      res_lists[[length(res_lists) + 1]] <- record_method(paste0(m, "-MAVE"), b_mave_d0, b_mave_dhat, 
+                                                          amortized_time + t_mave["elapsed"], dhat_m, do_ers = TRUE)
       
-      t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(new_X, new_Y, beta_init = reg_MAVE$dir[[d0]]) })
-      b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(new_X, new_Y, beta_init = reg_MAVE$dir[[dhat_m]]) else NA
-      
-      err_ee_d0 <- Delta(beta0, b_ee_d0, "F")
-      err_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, b_ee_dhat, "F") else NA
-      res_ee <- format_res(paste0(m, "-EE"), err_ee_d0, err_ee_dhat, t_ee["elapsed"], NA)
-      
-      return(rbind(res_mave, res_ee))
-    })
-    
-    results <- causal_results
+      t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(new_X, new_Y, beta_init = b_mave_d0) })
+      b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(new_X, new_Y, beta_init = b_mave_dhat) else NA
+      res_lists[[length(res_lists) + 1]] <- record_method(paste0(m, "-EE"), b_ee_d0, b_ee_dhat, t_ee["elapsed"], NA, do_ers = FALSE)
+    }
     
   } else if (group == "RP") {
     message("Running Residualized Pair (RP)...")
-    
-    # 1. Fit C_mod ONCE
     t_cre <- system.time({
-      cre_obj <- compute_new_response_and_exposure(
-        Y = Y, X = X, C = C, 
-        method = "RP",
-        L = 5,
-        C_fitter = well_specified_C_fitter
-        # outcome_fitter and gps_fitter intentionally omitted!
-      )
+      cre_obj <- compute_new_response_and_exposure(Y = Y, X = X, C = C, method = "RP", L = 5,
+                                                   C_fitter = well_specified_C_fitter)
     })
     
-    # 2. Run MAVE and EE
-    new_Y <- cre_obj$new_Y
-    new_X <- cre_obj$new_X
+    new_X <- cre_obj$new_X; new_Y <- cre_obj$new_Y
     df <- data.frame(newY = new_Y, new_X)
     
     t_mave <- system.time({ reg_MAVE <- MAVE::mave(newY ~ ., data = df, method = "meanMAVE") })
     dhat_m <- MAVE::mave.dim(reg_MAVE)$dim.min
-    err_mave_d0 <- Delta(beta0, reg_MAVE$dir[[d0]], "F")
-    err_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, reg_MAVE$dir[[dhat_m]], "F") else NA
+    b_mave_d0 <- reg_MAVE$dir[[d0]]
+    b_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) reg_MAVE$dir[[dhat_m]] else NA
     
-    total_mave_time <- t_cre["elapsed"] + t_mave["elapsed"]
-    res_mave <- format_res("RP-MAVE", err_mave_d0, err_mave_dhat, total_mave_time, dhat_m)
+    res_lists[[length(res_lists) + 1]] <- record_method("RP-MAVE", b_mave_d0, b_mave_dhat, t_cre["elapsed"] + t_mave["elapsed"], dhat_m, do_ers = TRUE)
     
-    t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(new_X, new_Y, beta_init = reg_MAVE$dir[[d0]]) })
-    b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(new_X, new_Y, beta_init = reg_MAVE$dir[[dhat_m]]) else NA
-    
-    err_ee_d0 <- Delta(beta0, b_ee_d0, "F")
-    err_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) Delta(beta0, b_ee_dhat, "F") else NA
-    res_ee <- format_res("RP-EE", err_ee_d0, err_ee_dhat, t_ee["elapsed"], NA)
-    
-    results[[1]] <- rbind(res_mave, res_ee)
+    t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(new_X, new_Y, beta_init = b_mave_d0) })
+    b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(new_X, new_Y, beta_init = b_mave_dhat) else NA
+    res_lists[[length(res_lists) + 1]] <- record_method("RP-EE", b_ee_d0, b_ee_dhat, t_ee["elapsed"], NA, do_ers = FALSE)
     
   } else if (group == "Oracle") {
     message("Running Oracle")
     t_mave <- system.time({ obj <- MAVE::mave(sim$mu_X ~ X, method = "meanMAVE") })
     dhat_m <- MAVE::mave.dim(obj)$dim.min
-    err_mave_d0 <- Delta(beta0, obj$dir[[d0]], "F")
-    err_mave_dhat <- if(dhat_m >= 1) Delta(beta0, obj$dir[[dhat_m]], "F") else NA
-    results[[1]] <- format_res("Oracle-MAVE", err_mave_d0, err_mave_dhat, t_mave["elapsed"], dhat_m)
+    b_mave_d0 <- obj$dir[[d0]]
+    b_mave_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) obj$dir[[dhat_m]] else NA
     
-    t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(X, Y, beta_init = obj$dir[[d0]]) })
-    b_ee_dhat <- if(dhat_m >= 1) run_efficient_estimator(X, Y, beta_init = obj$dir[[dhat_m]]) else NA
-    err_ee_d0 <- Delta(beta0, b_ee_d0, "F")
-    err_ee_dhat <- if(dhat_m >= 1) Delta(beta0, b_ee_dhat, "F") else NA
-    results[[2]] <- format_res("Oracle-EE", err_ee_d0, err_ee_dhat, t_ee["elapsed"], NA)
+    res_lists[[length(res_lists) + 1]] <- record_method("Oracle-MAVE", b_mave_d0, b_mave_dhat, t_mave["elapsed"], dhat_m, do_ers = TRUE)
+    
+    t_ee <- system.time({ b_ee_d0 <- run_efficient_estimator(X, Y, beta_init = b_mave_d0) })
+    b_ee_dhat <- if(!is.na(dhat_m) && dhat_m >= 1) run_efficient_estimator(X, Y, beta_init = b_mave_dhat) else NA
+    res_lists[[length(res_lists) + 1]] <- record_method("Oracle-EE", b_ee_d0, b_ee_dhat, t_ee["elapsed"], NA, do_ers = FALSE)
   }
   
-  return(rbindlist(results))
+  # ========================================================================
+  # COMBINE AND RETURN
+  # ========================================================================
+  return(list(
+    err  = rbindlist(lapply(res_lists, `[[`, "err"), use.names = TRUE, fill = TRUE),
+    diag = rbindlist(lapply(res_lists, `[[`, "diag"), use.names = TRUE, fill = TRUE),
+    ers  = rbindlist(lapply(res_lists, `[[`, "ers"), use.names = TRUE, fill = TRUE)
+  ))
 }
 
 # -------------------------------------------------------------------------
@@ -199,74 +232,80 @@ main <- function() {
   message("Number of cores: ", N_CORES)
   message("Experiment: ", EXPERIMENT)
   
-  # Actual simulation
   N_vector <- c(100, 500, 1000, 2500, 5000)
   groups   <- c("Base", "RA_DR_PO", "RP", "Oracle")
-  
-  # For testing
   #N_vector <- c(100)
   #groups   <- c("Base", "RA_DR_PO", "Oracle")
-  #groups   <- c("Base", "RA")
   
-  # Retrieve number of cores from SLURM environment for parallelization
+  # -------------------------------------------------------------------
+  # Generate a Fixed, 100-Point Evaluation Grid
+  # -------------------------------------------------------------------
+  message("Generating fixed evaluation grid for ERS...")
+  
+  # HARDCODED SEED: Ensures the grid is mathematically identical 
+  # across ALL tasks, ALL sample sizes, and ALL methods.
+  set.seed(99999)
+  
+  is_weak <- (EXPERIMENT == "weak_dim")
+  int_coef <- if(EXPERIMENT == "additive") 0.0 else 5.0
+  
+  sim_grid <- simulate_causal_sdr_simple(n = 100, p = 10, q = 5, noise_sd = 0.5, 
+                                         rho_X = 0.8, interaction_coef = int_coef, 
+                                         weak_dim_signal = is_weak)
+  
+  x_eval_fixed  <- sim_grid$X
+  mu_true_fixed <- sim_grid$mu_X
+  
   message("Running with ", N_CORES, " cores.")
   
-  tables <- lapply(N_vector, function(n) {
+  # Run simulations across N_vector
+  tables_list <- lapply(N_vector, function(n) {
     message("\nSimulation experiment with sample size ", n)
+    
+    # Reset the seed using the TASK_ID so the training data varies properly
+    # across the SLURM array, while retaining reproducibility.
     set.seed(TASK_ID)
     
-    if(EXPERIMENT == "weak_dim"){
-      sim <- simulate_causal_sdr_simple(n = n, 
-                                        p = 10, 
-                                        q = 5, 
-                                        noise_sd = 0.5,
-                                        rho_X = 0.8,
-                                        interaction_coef = 5.0,
-                                        weak_dim_signal = TRUE) 
-    }
-    
-    if(EXPERIMENT == "interaction"){
-      sim <- simulate_causal_sdr_simple(n = n, 
-                                        p = 10, 
-                                        q = 5, 
-                                        noise_sd = 0.5,
-                                        rho_X = 0.8,
-                                        interaction_coef = 5.0,
-                                        weak_dim_signal = FALSE) 
-    }
-    
-    if(EXPERIMENT == "additive"){
-      sim <- simulate_causal_sdr_simple(n = n, 
-                                        p = 10, 
-                                        q = 5, 
-                                        noise_sd = 0.5,
-                                        rho_X = 0.8,
-                                        interaction_coef = 0.0, # Turn off interaction b/w Z and C
-                                        weak_dim_signal = FALSE) 
-    }
+    sim <- simulate_causal_sdr_simple(n = n, p = 10, q = 5, noise_sd = 0.5, rho_X = 0.8,
+                                      interaction_coef = int_coef, weak_dim_signal = is_weak) 
     
     # Run the families in parallel
     res_list <- mclapply(groups, function(g) {
-      evaluate_method_group(group = g, sim = sim, n = n, task_id = TASK_ID)
+      evaluate_method_group(group = g, sim = sim, n = n, task_id = TASK_ID,
+                            x_eval_fixed = x_eval_fixed, mu_true_fixed = mu_true_fixed)
     }, mc.cores = N_CORES)
     
-    return(rbindlist(res_list))
-  }) |> rbindlist()
+    # Combine outputs for this sample size N
+    list(
+      err  = rbindlist(lapply(res_list, `[[`, "err"), use.names = TRUE, fill = TRUE),
+      diag = rbindlist(lapply(res_list, `[[`, "diag"), use.names = TRUE, fill = TRUE),
+      ers  = rbindlist(lapply(res_list, `[[`, "ers"), use.names = TRUE, fill = TRUE)
+    )
+  })
+  
+  # Aggregate all sample sizes
+  final_err  <- rbindlist(lapply(tables_list, `[[`, "err"), use.names = TRUE, fill = TRUE)
+  final_diag <- rbindlist(lapply(tables_list, `[[`, "diag"), use.names = TRUE, fill = TRUE)
+  final_ers  <- rbindlist(lapply(tables_list, `[[`, "ers"), use.names = TRUE, fill = TRUE)
   
   # Save Output
   out_dir <- here("outputs/simulation/jasa-initial-submission", EXPERIMENT)
   if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
   
-  filename <- paste0("sim-", sprintf("%03d", TASK_ID), ".csv")
-  data.table::fwrite(tables, file = file.path(out_dir, filename))
-  message("Results saved to ", filename)
+  base_filename <- paste0("sim-", sprintf("%03d", TASK_ID))
+  
+  data.table::fwrite(final_err,  file.path(out_dir, paste0(base_filename, "-error.csv")))
+  data.table::fwrite(final_diag, file.path(out_dir, paste0(base_filename, "-diag.csv")))
+  data.table::fwrite(final_ers,  file.path(out_dir, paste0(base_filename, "-ers.csv")))
+  
+  message("Results saved to ", out_dir)
 }
 
 # Arguments for main ------------------------------------------------------
 if(interactive()){
-  TASK_ID    <- 100
+  TASK_ID    <- 1
   N_CORES    <- 1
-  EXPERIMENT <- "weak_dim"
+  EXPERIMENT <- "additive"
 } else{
   TASK_ID    <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
   N_CORES    <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 1))
