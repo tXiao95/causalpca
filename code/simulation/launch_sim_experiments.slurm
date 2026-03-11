@@ -2,6 +2,8 @@
 
 # Define the experiments
 EXPERIMENTS=("interaction" "additive" "weak_dim")
+#EXPERIMENTS=("additive" "weak_dim")
+#EXPERIMENTS=("weak_dim")
 
 # Define the SLURM script to execute (update this if your slurm file is named differently)
 SLURM_SCRIPT="fit_simulation.slurm"

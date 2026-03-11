@@ -8,7 +8,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=thsiao3@emory.edu
 #SBATCH --time=00:05:00
-#SBATCH --partition=chang,short-cpu
+#SBATCH --partition=short-cpu
 #SBATCH --output=/scratch/thsiao3/output/compile_CSDR_%j.out
 #SBATCH --error=/scratch/thsiao3/error/compile_CSDR_%j.err
 

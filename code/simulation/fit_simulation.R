@@ -33,6 +33,17 @@ well_specified_outcome_fitter <- function(Y, XC_df, ...) {
   SL_outcome_fitter(Y, XC_df, SL.lib = c("SL.glm", "SL.glmnet", "SL.earth"), ...)
 }
 
+DR_outcome_fitter <- function(Y, XC_df, ...) {
+  SL_outcome_fitter(Y, XC_df, SL.lib = c("SL.glm", "SL.glmnet", "SL.earth", "SL.gam",
+                                         "SL.ranger", "SL.xgboost"), ...)
+}
+
+# New approach:
+DR_outcome_fitter <- function(Y, XC_df, ...) {
+  # You can tweak epochs and lr depending on how noisy your simulated data is
+  nn_outcome_fitter(Y, XC_df, epochs = 150, lr = 0.05, ...)
+}
+
 # 2. GPS Model: f(X | C)
 # The DGP strictly generates X | C as a multivariate normal with a linear mean.
 # A linear MVN model is perfectly specified and lightning fast.
@@ -99,7 +110,7 @@ evaluate_method_group <- function(group, sim, n, task_id, x_eval_fixed, mu_true_
       suppressWarnings({
         crossfit_ERS(Y = Y, X = Z_train, C = C, x_eval = z_eval, 
                      estimator = "DR", L = 5, optimize_bw = TRUE,
-                     outcome_fitter = well_specified_outcome_fitter,
+                     outcome_fitter = DR_outcome_fitter,
                      gps_fitter = well_specified_gps_fitter)
       })
     }, error = function(e) NULL)
@@ -234,8 +245,8 @@ main <- function() {
   
   N_vector <- c(100, 500, 1000, 2500, 5000)
   groups   <- c("Base", "RA_DR_PO", "RP", "Oracle")
-  #N_vector <- c(100)
-  #groups   <- c("Base", "RA_DR_PO", "Oracle")
+  #N_vector <- c(500)
+  #groups   <- c("Base")
   
   # -------------------------------------------------------------------
   # Generate a Fixed, 100-Point Evaluation Grid
@@ -289,7 +300,7 @@ main <- function() {
   final_ers  <- rbindlist(lapply(tables_list, `[[`, "ers"), use.names = TRUE, fill = TRUE)
   
   # Save Output
-  out_dir <- here("outputs/simulation/jasa-initial-submission", EXPERIMENT)
+  out_dir <- here("outputs/simulation/jasa-initial-submission/final_results_nnet", EXPERIMENT)
   if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
   
   base_filename <- paste0("sim-", sprintf("%03d", TASK_ID))
@@ -303,9 +314,9 @@ main <- function() {
 
 # Arguments for main ------------------------------------------------------
 if(interactive()){
-  TASK_ID    <- 1
+  TASK_ID    <- 2
   N_CORES    <- 1
-  EXPERIMENT <- "additive"
+  EXPERIMENT <- "interaction"
 } else{
   TASK_ID    <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
   N_CORES    <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 1))
