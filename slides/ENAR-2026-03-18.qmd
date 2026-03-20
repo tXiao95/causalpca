@@ -1,0 +1,825 @@
+---
+title: "Causal sufficient dimension reduction for multiple continuous exposures"
+subtitle: "an application to environmental mixtures analysis"
+author: "Thomas Hsiao, Ph.D. \\newline March 19th, 2026"
+date: ""
+institute: "Emory University \\newline Rollins School of Public Health \\newline Department of Biostatistics and Bioinformatics"
+bibliography: references.bib
+format:
+  beamer:
+    classoption: ["4pt"]
+    pdf-engine: xelatex
+    include-in-header:
+      text: |
+        \usepackage{multirow}
+        \usepackage{multicol}
+        \usepackage{booktabs}
+    incremental: false
+    theme: "metropolis"
+    colortheme: "default"
+    fonttheme: "default"
+    header-includes: |
+      % Define custom colors
+      \definecolor{customblue}{HTML}{1e376d}
+      \definecolor{customgold}{HTML}{d9ab28}
+
+      % Change main color for frame title bar (spanning the slide length)
+      \setbeamercolor{frametitle}{bg=customblue,fg=white}
+
+      % Change title text on the title frame to customblue
+      \setbeamercolor{title}{bg=customblue,fg=customblue}
+
+      % Modify the color of the horizontal line in the title slide (Metropolis default line)
+      \setbeamercolor{title separator}{fg=customgold}
+
+      % Set the section title page bar to customblue
+      \setbeamercolor{section title}{fg=customblue,bg=customblue}
+      \setbeamercolor{background canvas}{bg=white}
+
+      <!-- % Theorem block -->
+      <!-- \setbeamercolor{block title}{bg=customblue,fg=white} -->
+      <!-- \setbeamercolor{block body}{bg=lightgray,fg=black} -->
+
+      % Add logo to the top right of the title slide
+      \titlegraphic{%
+        \hfill%
+        \includegraphics[width=3cm]{ShieldEmory_hz_280_pres2023.png}%
+      }
+      
+      % Define the last slide to count in the total (Change this manually to match the "Conclusion" slide number)
+      \newcounter{finalslide}
+      \setcounter{finalslide}{44} % Change this to the last slide before "Conclusion"
+      
+      % Add slide number in the lower right
+       \setbeamertemplate{footline}{
+         \leavevmode%
+         \ifnum\value{framenumber}>1
+           \ifnum\value{framenumber}>\numexpr\value{finalslide}+1\relax % Hide numbering one slide after "Conclusion"
+           \else
+             \hfill%
+             \usebeamercolor[fg]{page number in head/foot}%
+             \usebeamerfont{page number in head/foot}%
+             \the\numexpr\value{framenumber}-1\relax{} / \the\value{finalslide}\kern1em
+           \fi
+         \fi
+      }
+---
+
+# Introduction
+
+## Goals of Mixtures Analysis
+
+Evaluating the health effects of complex environmental mixtures has become a central priority for the NIEHS. 
+
+. . .
+
+- Assess the joint health impact 
+
+- Identify important contributors
+
+- Inform policy regulations 
+
+## Environmental mixtures analysis methods
+
+Single-index methods ($d=1$):
+
+- Weighted quantile sum regression (WQS) 
+
+- Quantile $g$-computation (qgcomp) 
+
+Dimension reduction methods ($1<d<p$):
+
+- Principal components pursuit regression (PCP) 
+
+- Bayesian multiple index models (BMIM) 
+
+Full exposure-response surface (ERS) methods($d=p$):
+
+- Bayesian kernel machine regression (BKMR) 
+
+- Bayesian additive regression trees (BART) 
+
+- Distributed lag models with regression trees (DLM tree)
+
+## Limitations of existing methods
+
+General structure of the methods is:
+$$
+Y = h(X) + C^\top \gamma + \epsilon
+$$
+and differ by how they estimate $h$. 
+
+. . .
+
+1. The truth might lie between the single index and full ERS paradigms.
+
+. . .
+
+2. Many dimension reduction methods don't take into account the outcome $Y$
+
+. . .
+
+3. None of these (except for qgcomp sometimes) are *causal inference* methods.
+
+<!--
+## Dimension reduction as a solution
+
+Why I think dimension reduction is the answer:
+
+- Dimension reduction balances **flexibility** and **interpretability** by estimating the *intrinsic dimension* of the ERS.
+
+. . .
+
+- **Single-index models** and **full ERS models** are special cases. 
+
+. . .
+
+- Correlated exposures can be captured through shared latent components.
+-->
+
+
+## Proposed solution
+
+We propose a method, **causal sufficient dimension reduction**, that is simultaneously *causal*, *flexible*, and *interpretable*.
+
+# Causal inference
+
+## Notation
+
+-   Observed data: $O=(Y, X, C) \in \mathcal{Y}\times\mathcal{X}\times\mathcal{C}$
+
+    -   $Y \in \mathbb{R}$: continuous outcome\
+    -   $X \in \mathbb{R}^p$: continuous exposures\
+    -   $Z \in \mathbb{R}^d$: latent exposures \
+    -   $C \in \mathbb{R}^q$: covariates
+
+-   Data: i.i.d. sample $({O}_1,\dots,{O}_n)$
+
+-   Potential outcomes: $Y^{x}$ = outcome under exposure $x$
+
+-   Causal mean with intervention $x$: $\mu(x) := \mathbb{E}\!\left[Y^{{x}}\right]$
+
+-   Outcome regression: $m({x}, {c}):= \mathbb{E}(Y \mid {X} = {x}, {C}={c})$
+
+-   Propensity score: $\pi({x}\mid {c})=\partial P({X}\leq {x}\mid {C}={c}) / \partial{x}$
+
+<!--
+## Identification of the Causal Mean
+
+**Regression Adjustment Formula**: 
+$$
+  \mu(x) = \mathbb{E}\!\left[ m(x, C) \right]
+$$
+
+**Generalized Propensity Score (GPS)**:
+$$
+  \mu(x) = \lim_{h\to 0} \mathbb{E} \left[\frac{Y \cdot K\left(\frac{X-x}{h}\right)}{h^p \cdot \pi(X \mid C)}  \right]
+$$
+-->
+
+## Doubly robust estimation of causal ERS
+
+Colangelo & Lee (2025) and Zhang & Chen (2025) provide a $\sqrt{nh}$-convergent doubly-robust estimator for the dose-response curve for univariate continuous treatments. 
+
+We extend to the multivariate case as follows:
+
+::: {.callout-important icon=false title="Doubly-robust estimator of $\mu(x)$"}
+$$
+    \hat{\mu}_{DR}(x) = \frac{1}{nh^p} \sum_{i=1}^n \Bigg\{\frac{K\left(\frac{X_i - x}{h}\right)}{\widehat{\pi}(X_i \mid C_i)}\cdot [Y_i - \widehat{m}(x, C_i)] + h^p \cdot \widehat{m}(x, C_i)\Bigg\}.
+$$
+:::
+
+## Room for improvement
+
+We have a doubly robust estimator of $\mu(x)$ for multiple continuous exposures. 
+
+. . .
+
+It requires nuisance estimation of $m(x,c)$ and $\pi(x \mid c)$. 
+
+. . .
+
+Fitting a $(p+q)$-regression and a $p$-variate conditional density with $q$ regressors can be hard! 
+
+##
+
+Can we find a low rank $Z$ that preserves all the information about $\mu(x)$ contained in $X$? 
+
+# Sufficient dimension reduction
+
+## Sufficient Dimension Reduction (SDR)
+
+**Goal:** find a linear transformation $\beta \in \mathbb{R}^{p \times d}$ that retains all information about $\mathbb{E}(Y\mid X)$ in ${X}$. 
+
+$$
+  \mathbb{E}(Y\mid {X}={x})
+   = \mathbb{E}(Y\mid \beta^\top{X}=\beta^\top {x})
+$$
+
+We refer to $\text{span}(\beta)$ as the **central mean subspace (CMS)** denoted by $\mathcal{S}_{\mathbb{E}(Y\mid X)}$.
+
+## Semiparametric Estimation of the CMS
+
+The efficient score for $\beta$ (Luo and Cai, 2016) is:
+
+$$
+\begin{aligned}
+{U}(\beta)
+&=
+\frac{1}{\sigma^2(X)}
+\left[
+X -
+\frac{\mathbb{E}\{X / \sigma^2(X) \mid \beta^\top X\}}
+{\mathbb{E}\{1 / \sigma^2(X) \mid \beta^\top X\}}
+\right] \\
+&\qquad \times
+\frac{\partial \mathbb{E}(Y\mid \beta^\top X)}{\partial (\beta^\top X)}
+\big[Y - \mathbb{E}(Y \mid \beta^\top X)\big]
+\end{aligned}
+$$
+
+Our estimate $\hat{\beta}$ solves $U(\hat{\beta})=0$ by estimating nuisances:
+
+1. $\sigma^2(X):=\text{Var}(Y \mid X)$
+2. $\mathbb{E}\{X / \sigma^2(X) \mid \beta^\top X\}$
+3. $\mathbb{E}\{1 / \sigma^2(X) \mid \beta^\top X\}$
+4. $\partial \mathbb{E}(Y\mid \beta^\top X) / \partial(\beta^\top X)$
+5. $\mathbb{E}(Y\mid \beta^\top X)$
+
+<!--
+## Gradient-based Alternatives
+
+A useful identity that leads to a computationally efficient alternative to $U(\beta)$ is:
+
+::: callout-tip
+## Key identity for the CMS
+
+$$
+  \frac{\partial \mathbb{E}(Y \mid {X}={x})}{\partial {x}}
+  = \beta \frac{\partial \mathbb{E}(Y \mid \beta^\top {X}=\beta^\top {x})}{\partial (\beta^\top{x})}
+  = \text{span}(\beta)
+$$
+:::
+
+We can therefore estimate the CMS through the gradient rather than through several nuisance functions. 
+-->
+
+## Estimation with MAVE
+
+The minimum average variance estimator (MAVE) from Xia et al. (2002) achieves estimation of CMS through a variation of local linear regression.
+
+**Model:**
+$$
+  Y = g(\beta^\top X) + \varepsilon, 
+  \qquad \mathbb{E}(\varepsilon \mid X) = 0
+$$
+
+**MAVE objective:**
+\begin{align*}
+  \min_{\beta^\top\beta = I_d,\; \{a_j,{b}_j\}}
+  \sum_{j=1}^n \sum_{i=1}^n 
+  \Big(Y_i - \{a_j +   {b}_j^\top \beta^\top ({X}_i - {X}_j)\}\Big)^2 w_{ij}
+\end{align*}
+
+where $w_{ij} = K_h(X_i-X_j) / \sum^n_{\ell=1} K_h(X_i - X_\ell)$. 
+
+## Motivation for Causal SDR
+
+Under confounding, it is clear that $\mathbb{E}(Y\mid X) \neq \mathbb{E}(Y^x)$. 
+
+. . .
+
+How can we bridge SDR for $\mathbb{E}(Y\mid X)$, with the doubly robust estimator $\hat{\mu}_{DR}(x)$ for the ERS from earlier? 
+
+# Causal sufficient dimension reduction
+
+## Model formulation
+
+Suppose that there exists $\beta\in \mathbb{R}^{p \times d}$
+
+$$
+\mu(x) = \mu_\beta(\beta^\top x), \qquad x\in \mathcal{X}.
+$$
+
+For causal SDR, our new estimand of interest is the **causal central mean subspace** (CCMS) denoted as $\mathcal{S}_{\mathbb{E}(Y\mid X)}$. 
+
+## Semiparametric Estimation in the Causal Setting
+
+Using the theory of marginal structural models (Robins, 2000), Nabi et al. (2022) proposed the following locally efficient score for estimating $\mathcal{S}_{\mathbb{E}(Y^x)}$.
+
+$$
+\begin{aligned}
+\tilde{U}(\beta)
+&=
+\mathbb{E}_q\!\big[\mathbb{E}[{U}^*(\beta)\mid X,C]\mid C\big] \\
+&\quad+
+\frac{\pi^*(X)}{\pi(X\mid C)}
+\Big({U}^*(\beta)-\mathbb{E}[{U}^*(\beta)\mid X,C]\Big)
+\end{aligned}
+$$
+
+where $U^*$ is the MSM version of the association-based score $U(\beta)$ and $\mathbb{E}_q(\cdot)$ denotes the *causal* mean. 
+
+## Total number of nuisance functions
+
+The number of nuisances required to evaluate $\tilde{U}(\beta)$ is much larger.
+
+1. $\text{Var}_q(Y \mid X)$
+2. $m(x,c)$
+3. $\pi(x\mid c)$
+4. $\mathbb{E}_q[\cdot \mid C]$
+5. $\mathbb{E}_q\{X / \sigma^2(X) \mid \beta^\top X\}$
+6. $\mathbb{E}_q\{1 / \sigma^2(X) \mid \beta^\top X\}$
+7. $\partial \mathbb{E}_q(Y\mid \beta^\top X) / \partial(\beta^\top X)$
+8. $\mathbb{E}_q(Y\mid \beta^\top X)$
+
+##
+
+Is there a way to conduct causal SDR that avoids such heavy $\beta$-dependent nuisance estimation while attaining acceptable efficiency? 
+
+## Multiple options for Causal SDR
+
+::: {.callout-note icon="false" title="New strategy"}
+Find new variables $\tilde{Y}$ and $\tilde{X}$ such that $\mathbb{E}(\tilde{Y} \mid \tilde{X}=x) = \mu_\beta(\beta^\top x)$. This allows us to take advantage of standard SDR methods. 
+:::
+
+. . .
+
+```{=tex}
+\begin{table}
+\centering
+\begin{tabular}{lll}
+\toprule
+Method & $Y$ variable & $X$ variable \\
+\midrule
+Oracle & $\mu(X_i)$ & $X_i$ \\
+Regression adjustment (RA) & $\hat{\mu}_{RA}(X_i)$ & $X_i$ \\
+Doubly robust (DR) & $\hat{\mu}_{DR}(X_i)$ & $X_i$ \\
+Pseudo-outcome (PO) & $\hat{\xi}_i$ & $X_i$ \\
+Residualized pair (RP) & $Y_i - \hat{\mathbb{E}}(Y \mid C_i)$ & $X - \hat{\mathbb{E}}(X \mid C_i)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+```
+
+## Structural dimension selection
+
+**NW leave-one-out estimator**
+$$
+\hat{a}_{d0,j}
+=
+\frac{\sum_{i\neq j} K^{(i,j)}_{h_d} \tilde{Y_i}}
+{\sum_{i\neq j} K^{(i,j)}_{h_d}},
+K^{(i,j)}_{h_d}
+=
+K_{h_d}\{\hat{\beta}_1^\top(\tilde{X}_i-\tilde{X}_j),\dots,\hat{\beta}_d^\top(\tilde{X}_i-\tilde{X}_j)\}
+$$
+
+**Cross-validated error**
+$$
+\text{CV}_n(d)
+=
+\frac{1}{n}\sum_{j=1}^{n}
+\big(\tilde{Y}_j-\hat{a}_{d0,j}\big)^2, \qquad \text{CV}_n(0)
+=
+\frac{1}{n}\sum_{i=1}^{n}(\tilde{Y}_i-\bar Y)^2
+$$
+
+**Estimated structural dimension**
+$$
+\hat d
+=
+\arg\min_{0\le d\le p}
+\text{CV}_n(d)
+$$
+
+## Summary of causal SDR procedure
+
+1. Estimate new response and exposure variables $(\tilde{Y}, \tilde{X})$
+2. Input the new $(\tilde{Y},\tilde{X})$ into standard MAVE. 
+3. Estimate structural dimension with $\hat{d}$. 
+4. Apply Newton-Raphson update to estimate $\mathcal{S}_{\mathbb{E}(Y^x)}$. 
+
+## Key question
+
+What are the statistical properties of MAVE when 
+
+1. Using noisy estimated versions of the true $Y$ and $X$?
+2. When $\epsilon=0$ (since $\hat{\mu}(x)$ converges to a deterministic quantity)?  
+
+## Causal MAVE convergence
+
+::: {.callout-note icon="false" title="Theorem (Convergence of csMAVE)"}
+Under regularity assumptions, if $h\to 0$, $d \geq d_0$, and $nh^p / \log(n)\to \infty$, then 
+$$
+\big\lVert (I_p-\hat{\beta}\hat{\beta}^\top) \beta\big\rVert = O_p(h^3 + h \delta_n + h^{-1}\delta_n^2+\textcolor{red}{h^{-1}R_n})
+$$ 
+where $\delta_n=\{\log n / (nh^p)\}^{1/2}$ and $\displaystyle \max_{1 \le i \le n} |\hat{\mu}(X_i) - \mu(X_i)| = O_p(R_n)$.
+:::
+
+The MAVE convergence rate is maintained so long as $R_n$ is fast enough (if $d_0$ is small and $m(x,c)$ and $\pi(x\mid c)$ are estimated well). 
+
+## Dimension estimator
+
+::: {.callout-note icon="false" title="Theorem (Consistency of $\\hat{d}$)"}
+The estimator $\hat{d}$ converges to the structural dimension $d_0$ in probability as $n\to\infty$.
+:::
+
+## Post dimension reduction inference
+
+::: {.callout-note icon="false" title="Theorem (Post dimension reduction inference)"}
+Let $\sqrt{n}(\hat{\beta}_n - \beta_0) = O_P(1)$ and $\hat{\mu}_{DR}(x;\beta)$ be the DR estimator using the intervention $\beta^{\top} X$. Under assumptions, if $h\to 0$ and $nh^d \to \infty$ as $n \to \infty$, then $\hat{\mu}_{DR}({x}_0; \hat{\beta}_n)$ consistently estimates $\mu({x}_0)$. The estimator based on the estimated reduction is asymptotically equivalent to the oracle estimator:
+$$
+\sqrt{nh_n^d} \big\{ \hat{\mu}_{DR}({x}_0; \hat{\beta}_n) - \hat{\mu}_{DR}({x}_0; \beta_0) \big\} = o_P(1)
+$$
+:::
+
+Plugging in $\hat{\beta}$ into the DR estimator gives no penalty (asymptotically) compared to the true $\beta_0$. 
+
+## Why not interpret $\beta$ directly?
+
+Suppose $d_0=2$.  
+
+### Basis representation 1
+
+$$
+\beta =
+\begin{pmatrix}
+1 & 0 \\
+0 & 1 \\
+0 & 0
+\end{pmatrix}
+$$
+
+Naive interpretation:
+
+- $X_1$ important
+- $X_2$ important
+- $X_3$ unimportant
+
+---
+
+### Basis representation 2 (same subspace)
+
+$$
+\tilde{\beta} =
+\begin{pmatrix}
+\frac{1}{\sqrt{2}} & -\frac{1}{\sqrt{2}} \\
+\frac{1}{\sqrt{2}} & \frac{1}{\sqrt{2}} \\
+0 & 0
+\end{pmatrix}
+$$
+
+Columns remain **orthonormal**, and
+
+$$
+\text{span}(\beta) = \text{span}(\tilde{\beta})
+$$
+
+But the entries suggest **different importance** for $X_1$ and $X_2$.
+
+---
+
+### Key point
+
+The individual coefficients of $\beta$ **depend on the chosen orthonormal basis**.
+
+Instead we define the **Subspace Importance Score**
+
+## Subspace Importance Score
+
+We define a measure of variable importance called the **Subspace Importance Score (SIS)**.
+
+Let
+$$
+P = \beta \beta^\top
+$$
+
+be the **projection matrix onto the central subspace** $\text{span}(\beta)$.
+
+For exposure $X_j$, define
+
+$$
+\lambda_j = P_{jj}.
+$$
+
+---
+
+### Properties
+
+- For each $j=1,\dots,p$,  
+  $$
+  0 \le \lambda_j \le 1.
+  $$
+
+- The scores sum to the **structural dimension**:
+  $$
+  \sum_{j=1}^p \lambda_j = d.
+  $$
+
+- $\lambda_j$ depends only on the **subspace $\text{span}(\beta)$**, and is invariant to the particular basis used for $\beta$.
+
+---
+
+### Interpretation
+
+$\lambda_j$ measures **how strongly exposure $X_j$ contributes to the CCMS**.
+
+- $\lambda_j=1$ → $X_j$ is completely present in the true ERS  
+- $\lambda_j=0$ → $X_j$ has no role in the true ERS
+
+# Simulation Analysis
+
+## Simulation Setup (Part 1)
+
+**Data Generating Process**
+
+- **Exposures & Confounders:** $p=10$ exposures ($X$) with AR(1) correlation ($\rho=0.8$) and $q=5$ independent normal confounders ($C$). 
+- **True Subspace:** The structural dimension is $d_0=2$, with $\beta$ solely spanning $X_1$ and $X_2$.
+- **Outcome Model:** $Y = h(Z) + g(C) + f(Z,C) + \epsilon$
+  - $h(Z) = 4\sin(Z_1) + 2Z_2^2 + Z_1Z_2$.
+  - $g(C) = 5.0 \tanh(C_1) + 5.0 (C_2^2 - 1) + 5.0 (C_3^2 - 1) + 5.0 \sin(1.5 C_4)$
+  - $f(Z,C)=5C_5(Z_1 + Z_2)$
+
+## Simulation Setup (Part 2)
+
+**Nuisance Function Estimation**
+
+- **$\mathbb{E}[Y \mid X, C]$:** 2-layer neural network via `torch` using 150 epochs, a 0.05 learning rate, and SiLU activation functions.
+- **$\pi(x \mid c)$:** Linear multivariate normal (MVN) density estimation.
+- **$\mathbb{E}[Y \mid C], \mathbb{E}[X \mid C]$:** `SuperLearner` ensemble combining GLM, Lasso (`glmnet`), and Multivariate Adaptive Regression Splines (`earth`).
+
+## Comparison methods
+
+\begin{table}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{>{\bfseries}l p{8.5cm}}
+\toprule
+Method & \textbf{Estimation of the Central Mean Subspace ($\beta$)} \\
+\midrule
+PCA & Top eigenvectors of $\text{Cov}(\mathbf{X})$ (unsupervised). \\
+pCCA & Maximizes linear correlation between $\mathbf{X}$ and $Y$ after linearly partialling out $\mathbf{C}$. \\
+MAVE & MAVE applied to $(Y, X)$. \\
+\textcolor{red}{Oracle-MAVE} & MAVE applied to $\big(\mu(X), X\big)$. \\ 
+\textcolor{red}{RA-MAVE}  & MAVE applied to $(\hat{\mu}_{RA}({X}), X)$. \\
+\textcolor{red}{DR-MAVE} & MAVE applied to $(\hat{\mu}_{DR}({X}), X)$ \\
+\textcolor{red}{PO-MAVE}  & MAVE applied to $(\hat{\xi}, X)$ \\
+\textcolor{red}{RP-MAVE} & MAVE applied to  $(Y - \hat{\mathbb{E}}[Y\mid C], {X} - \hat{\mathbb{E}}[{X}\mid {C}])$. \\
+Full X & No dimension reduction. $\hat{\beta}=I_p$. \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+## Evaluation metrics
+
+We want to know how well we estimate
+
+1. $\mathcal{S}_{\mathbb{E}(Y^x)}$: the causal central mean subspace
+2. $d_0$: the structural dimension
+3. $\mu_\beta(z)$: the causal ERS, using $\hat{Z}=\hat{\beta}^\top X$ in place of $X$.
+
+# Results
+
+## Estimation of $\mathcal{S}_{Y^x}$
+
+```{=tex}
+\begin{table}
+\centering
+\caption{Mean (SD) Frobenius norm error between estimated and true $\mathcal{S}_{Y^x}$ when $d_0$ is known.}
+
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lccccc}
+\toprule
+Method & $n=100$ & $n=500$ & $n=1000$ & $n=2500$ & $n=5000$ \\
+\midrule
+PCA         & 1.997 (0.002) & \textbf{1.997 (0.001)} & 1.997 (0.001) & 1.997 (0.000) & \textbf{1.997 (0.000)} \\
+pCCA        & 1.316 (0.119) & \textbf{1.202 (0.177)} & 1.100 (0.202) & 0.925 (0.219) & \textbf{0.743 (0.203)} \\
+MAVE        & 1.468 (0.220) & \textbf{1.247 (0.247)} & 1.239 (0.229) & 1.281 (0.179) & \textbf{1.299 (0.148)} \\
+Oracle-MAVE & 0.203 (0.084) & \textbf{0.030 (0.010)} & 0.015 (0.005) & 0.006 (0.002) & \textbf{0.003 (0.001)} \\
+RA-MAVE     & 1.276 (0.331) & \textbf{0.442 (0.388)} & 0.216 (0.272) & 0.072 (0.152) & \textbf{0.026 (0.027)} \\
+DR-MAVE     & 1.458 (0.253) & \textbf{0.546 (0.352)} & 0.297 (0.245) & 0.137 (0.138) & \textbf{0.079 (0.066)} \\
+PO-MAVE     & 1.486 (0.315) & \textbf{0.691 (0.484)} & 0.450 (0.433) & 0.292 (0.368) & \textbf{0.230 (0.317)} \\
+RP-MAVE     & 1.658 (0.173) & \textbf{1.339 (0.220)} & 1.171 (0.263) & 0.907 (0.332) & \textbf{0.689 (0.340)} \\
+\bottomrule
+\end{tabular}
+}
+
+\end{table}
+```
+## Order Determination
+
+```{=tex}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+```
+```{=tex}
+\begin{table}
+\centering
+\caption{Proportion of simulations selecting each structural dimension.}
+
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llcccccc}
+\toprule
+$n$ & Method & $d=0$ & $d=1$ & $d=2$ & $d=3$ & $d=4$ & $d=5$  \\
+\midrule
+
+500 & MAVE        & 0.00 & 0.00 & \textbf{0.11} & 0.75 & 0.14 & 0.00 \\
+    & Oracle-MAVE & 0.00 & 0.00 & \textbf{1.00} & 0.00 & 0.00 & 0.00 \\
+    & RA-MAVE     & 0.01 & 0.03 & \textbf{0.88} & 0.07 & 0.01 & 0.00 \\
+    & DR-MAVE     & 0.01 & 0.05 & \textbf{0.85} & 0.07 & 0.01 & 0.00 \\
+    & PO-MAVE     & 0.03 & 0.06 & \textbf{0.73} & 0.14 & 0.03 & 0.00 \\
+    & RP-MAVE     & 0.00 & 0.28 & \textbf{0.29} & 0.23 & 0.15 & 0.04 \\
+
+\midrule
+
+5000 & MAVE        & 0.00 & 0.00 & \textbf{0.00} & 1.00 & 0.00 & 0.00 \\
+     & Oracle-MAVE & 0.00 & 0.00 & \textbf{1.00} & 0.00 & 0.00 & 0.00 \\
+     & RA-MAVE     & 0.00 & 0.00 & \textbf{1.00} & 0.00 & 0.00 & 0.00 \\
+     & DR-MAVE     & 0.00 & 0.00 & \textbf{1.00} & 0.00 & 0.00 & 0.00 \\
+     & PO-MAVE     & 0.01 & 0.00 & \textbf{0.92} & 0.07 & 0.00 & 0.00 \\
+     & RP-MAVE     & 0.00 & 0.21 & \textbf{0.74} & 0.05 & 0.00 & 0.00 \\
+
+\bottomrule
+\end{tabular}
+}
+
+\end{table}
+```
+## Subspace Importance Scores ($n=500$)
+
+![](../results/jasa-initial-submission/ATL-AA/diag_plot_n=500.pdf)
+
+## Subspace Importance Scores ($n=5000$)
+
+![](../results/jasa-initial-submission/ATL-AA/diag_plot_n=5000.pdf)
+
+## ERS Pointwise Bias
+
+![Bias of ERS estimation.](../results/jasa-initial-submission/final_results_nnet/additive/plot_pw_bias.pdf)
+
+## ERS Pointwise RMSE
+
+![RMSE of ERS estimation.](../results/jasa-initial-submission/final_results_nnet/additive/plot_pw_rmse.pdf)
+
+## ERS Pointwise Coverage
+
+![Coverage of 95% pointwise CIs.](../results/jasa-initial-submission/final_results_nnet/additive/plot_pw_coverage.pdf)
+
+# Real data analysis
+
+## Motivating Dataset
+
+**Study population:** $N = 303$ African-American women in Atlanta from 2014-2020 with term births. 
+
+**Exposure:** Four log2-transformed PFAS exposures ($p$=4): PFOS, PFOA, PFNA, PFHxS. 
+
+**Covariates:** Maternal age, BMI, education, tobacco use, marijuana use, and infant sex.
+
+**Outcome:** Birthweight in grams. 
+
+## Subspace Importance Scores
+
+![Subspace importance scores between causal SDR and assocation-based SDR](../results/jasa-initial-submission/ATL-AA/diag_plot_notitle.pdf)
+
+## Estimate of the ERS
+
+![Causal ERS estimate with 95% CIs.](../results/jasa-initial-submission/ATL-AA/causal_ers_no_title.pdf){width="90%"}
+
+## Summary of causal SDR
+
+We have designed a method that:
+
+1. Implements dimension reduction for $X$ that preserves the causal dose-response (Theorem 1)
+
+. . .
+
+2. Consistently estimates the true dimension (Theorem 2)
+
+. . .
+
+3. Improves efficiency and coverage over using the original $X$ and incurs no asymptotic plug-in bias for ERS estimation (Theorem 3)
+
+. . .
+
+4. Leverages existing off-the-shelf tools for SDR
+
+. . .
+
+5. Gives clear outputs for causal ERS estimation and variable importance
+
+
+## Acknowledgments
+
+Thank you to my postdoc advisers Drs. Razieh Nabi and Howard Chang, and collaborators Drs. Donghai Liang and Anne Dunlop for access to the ATL-AA cohort data!
+
+# Questions?
+
+# Appendix
+
+## Causal Identification Assumptions
+
+1.  **Consistency**: If $X=x$, then the observed outcome equals the potential outcome: $Y = Y^x$
+
+2.  **Positivity**: Every exposure level has nonzero probability (given covariates): $\pi(\mathbf{x}\mid\mathbf{c}) \geq \varepsilon > 0$
+
+3.  **Conditional ignorability**: Given covariates, exposure is independent of potential outcomes: $Y^{\mathbf{x}} \;\perp\!\!\!\perp\; \mathbf{X}\mid \mathbf{C}$
+
+::: {.callout-warning icon="false" title="Remark (Positivity)"}
+We make the positivity assumption here for identification purposes rather than assuming its validity in environmental applications. However, identifying a low rank $Z$ can make positivity more tenable than for $X$. 
+:::
+
+## Causal response variables
+
+Recall again the underlying model:
+
+$$
+\mu(x)=g(\beta^\top x), \qquad x\in\mathcal{X}.
+$$
+
+Notice that if $\mathbb{E}(W \mid X=x)=\mu(x)$, then plugging $(W,X)$ into the MAVE yields a valid estimate of the CCMS. 
+
+## RA and DR responses
+
+One approach is to estimate $\mu(x)$ at $X_1,X_2,...,X_n$ to yield $\hat{\mu}(X_1),...,\hat{\mu}(X_n)$.
+
+This can be achieved with the mentioned RA and DR approaches.
+
+## Pseudo-outcomes (PO)
+
+By a multivariate extension of Kennedy et al. (2017), a causal pseudo-outcome can be desisgned:
+
+$$
+\xi_{j}=\frac{Y_{j}-m(X_{j},C_{j})}{\pi(X_{j}\mid C_{j})} \left\{\frac{1}{n}\sum_{i=1}^n \pi(X_{j}\mid C_{i}) \right\} + \frac{1}{n}\sum_{i=1}^n m(X_{j}, C_{i}) 
+$$
+which satisfies 
+
+$$
+\xi = \mu_\beta(\beta^\top X) + \epsilon_\xi, \qquad \mathbb{E}(\epsilon_\xi \mid X) = 0.
+$$
+
+## Residualized Pair (RP)
+
+The RA, DR, and PO approaches all require estimation of $m(x,c)$ and $\pi(x\mid c)$, which may be unappealing if the goal is dimension reduction. 
+
+If we are willing to assume no interaction between $X$ and $C$ in $m(x,c)$:
+
+::: {.callout-note icon="false" title="Proposition"}
+Let $\tilde{Y}=Y-\mathbb{E}(Y\mid C)$ and $\tilde{X}=X-\mathbb{E}(X\mid C)$. Under additive confounding, for some smooth function $\tilde{g}$,
+
+$$
+    \mathbb{E}(\tilde{Y} \mid \tilde{X}) = \tilde{g}(\beta^\top \tilde{X}).
+$$
+:::
+
+## Comparison between MAVE and EE estimators
+
+```{=tex}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+```
+```{=tex}
+\begin{table}
+\centering
+\caption{Mean (SD) of Frobenius norm error between the estimated and true subspace between MAVE and one-step EE.}
+
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lcccccccccc}
+\toprule
+& \multicolumn{2}{c}{$n=100$} & \multicolumn{2}{c}{$n=500$} &
+\multicolumn{2}{c}{$n=1000$} & \multicolumn{2}{c}{$n=2500$} &
+\multicolumn{2}{c}{$n=5000$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+Method & MAVE & EE & MAVE & EE & MAVE & EE & MAVE & EE & MAVE & EE \\
+\midrule
+Oracle & 0.216 (0.136) & 0.635 (0.261) & 0.030 (0.010) & 0.379 (0.131) & 0.015 (0.005) & 0.316 (0.107) & 0.006 (0.002) & 0.254 (0.086) & 0.003 (0.001) & 0.219 (0.070) \\
+RA     & 1.343 (0.341) & 1.352 (0.332) & 0.447 (0.392) & 0.463 (0.384) & 0.223 (0.288) & 0.232 (0.282) & 0.073 (0.157) & 0.080 (0.153) & 0.026 (0.035) & 0.031 (0.035) \\
+DR     & 1.537 (0.267) & 1.543 (0.262) & 0.568 (0.369) & 0.589 (0.361) & 0.303 (0.257) & 0.323 (0.253) & 0.140 (0.151) & 0.162 (0.148) & 0.078 (0.058) & 0.100 (0.061) \\
+PO     & 1.487 (0.318) & 1.491 (0.315) & 0.663 (0.450) & 0.657 (0.445) & 0.432 (0.401) & 0.412 (0.393) & 0.287 (0.345) & 0.246 (0.333) & 0.221 (0.293) & 0.165 (0.280) \\
+RP     & 1.768 (0.218) & 1.776 (0.217) & 1.413 (0.259) & 1.443 (0.254) & 1.192 (0.240) & 1.226 (0.237) & 0.913 (0.255) & 0.952 (0.249) & 0.676 (0.285) & 0.697 (0.271) \\
+\bottomrule
+\end{tabular}
+}
+
+\end{table}
+```
+## Assumption for csMAVE
+
+::: {.callout-warning icon="false" title="Assumption (csMAVE)"}
+\small
+
+1.  $(Y_i,X_i,C_i)$ are i.i.d.
+
+2.  $X$ and $\mu(X)$ have finite moments of all orders.
+
+3.  $f_X(x)$ has bounded fourth derivatives and is bounded away from zero on compact support $\mathcal{X}$.
+
+4.  $\mu(X)=g(\beta^\top X)$ with $\beta^\top\beta=I_d$ and $g$ having bounded continuous third derivatives.
+
+5.  $K(\cdot)$ is bounded, spherically symmetric, differentiable, and satisfies $\int UU^\top K(U)\,dU = I$.
+
+6.  $\displaystyle \max_{1 \le i \le n} |\hat{\mu}(X_i) - \mu(X_i)| = O_p(R_n)$.
+:::
+
+

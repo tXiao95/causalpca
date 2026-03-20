@@ -49,4 +49,7 @@ po/*~
 rsconnect/
 
 data/ENVISION/
+results/birthweight/
+data/ATL-AA/
+results/archive/
 results/bw_*
