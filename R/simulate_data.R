@@ -165,6 +165,8 @@ simulate_causal_sdr <- function(n = 1000,
 #' @param noise_sd Noise level for the outcome
 #' @param rho_X Autoregressive correlation between X variables
 #' @param interaction_coef Strength of the interaction (Set to 0 for RP to work, >0 for RP to fail)
+#' @param weak_dim_signal whether to use the simulation that results in a weak dimension signal
+#' @param sparse whether to use the sparse assumption (only select X1 and X2)
 #' @return A list of data and true structural components
 
 # Simulate strong dimension signal
@@ -174,7 +176,8 @@ simulate_causal_sdr_simple <- function(n = 1000,
                                        noise_sd = 0.5,
                                        rho_X = 0.8,
                                        interaction_coef = 5.0, 
-                                       weak_dim_signal = FALSE) {
+                                       weak_dim_signal = FALSE,
+                                       sparse = FALSE) {
   
   if (p < 6) stop("p must be >= 6 to accommodate causal, MAVE traps, and PCA traps.")
   if (q < 5) stop("q must be >= 5 to accommodate the confounding structures and interactions.")
@@ -210,9 +213,15 @@ simulate_causal_sdr_simple <- function(n = 1000,
   if(weak_dim_signal){
     beta[1:2, 1] <- 1 / sqrt(2)
     beta[3, 2] <- 1 
-  } else{
+  } else if(sparse){
     beta[1,1] <- 1
     beta[2,2] <- 1
+  } else{
+    # Z1 uses odd-indexed variables: X1, X3, X7, X9
+    beta[c(1, 3, 7, 9), 1] <- 0.5  # which is exactly 1/sqrt(4)
+    
+    # Z2 uses even-indexed variables: X2, X4, X8, X10
+    beta[c(2, 4, 8, 10), 2] <- 0.5 # which is exactly 1/sqrt(4)
   }
   
   Z <- X %*% beta  
