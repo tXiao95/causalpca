@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Define the experiments
-EXPERIMENTS=("interaction" "additive" "weak_dim")
+NAME="nnet_nonsparse"
+EXPERIMENTS=("interaction" "additive")
+#EXPERIMENTS=("interaction" "additive" "weak_dim")
 #EXPERIMENTS=("additive" "weak_dim")
 #EXPERIMENTS=("weak_dim")
 
@@ -34,7 +36,7 @@ for EXP in "${EXPERIMENTS[@]}"; do
         --array=1-1000 \
         --output="/scratch/thsiao3/output/sim_${EXP}_%A_%a.out" \
         --error="/scratch/thsiao3/error/sim_${EXP}_%A_%a.err" \
-        "$SLURM_SCRIPT" "$EXP")
+        "$SLURM_SCRIPT" "$NAME" "$EXP")
         
     echo "  -> Array Job Submitted (ID: $ARRAY_JOB_ID)"
     
@@ -44,7 +46,7 @@ for EXP in "${EXPERIMENTS[@]}"; do
         --dependency=afterany:${ARRAY_JOB_ID} \
         --output="/scratch/thsiao3/output/comp_${EXP}_%j.out" \
         --error="/scratch/thsiao3/error/comp_${EXP}_%j.err" \
-        "$COMPILE_SCRIPT" "$EXP")
+        "$COMPILE_SCRIPT" "$NAME" "$EXP")
         
     echo "  -> Compile Job Submitted (ID: $COMP_JOB_ID) - Waiting on $ARRAY_JOB_ID"
     echo "------------------------------------------"

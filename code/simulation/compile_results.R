@@ -403,8 +403,8 @@ main <- function(){
   # Source the simulation DGP so we can perfectly reconstruct the true Z
   source(here("R/simulate_data.R"))
   
-  dir      <- paste0("jasa-initial-submission/final_results_nnet/", EXPERIMENT)
-  sim_path <- here("outputs", "simulation", dir)
+  sim_path <- here("outputs", "simulation", "jasa-initial-submission", NAME, EXPERIMENT)
+  
   
   # Load the 3 distinct data streams
   dt_err  <- prep_sim_data(sim_path, "-error\\.csv$")
@@ -463,7 +463,7 @@ main <- function(){
   # -----------------------------------------------------------------------
   # Save Output
   # -----------------------------------------------------------------------
-  out_dir <- here("results/jasa-initial-submission/final_results_nnet", EXPERIMENT)
+  out_dir <- here("results/jasa-initial-submission", NAME, EXPERIMENT)
   if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
   
   # Save Plots to PDF (width and height adjusted for wide facet grids)
@@ -490,9 +490,11 @@ main <- function(){
 
 # Main code ---------------------------------------------------------------
 if(interactive()){
-  EXPERIMENT <- "weak_dim"
+  NAME       <- "nnet_nonsparse"
+  EXPERIMENT <- "interaction"
 } else{
-  EXPERIMENT <- as.character( commandArgs(trailingOnly = TRUE)[1] )
+  NAME       <- as.character( commandArgs(trailingOnly = TRUE)[1] )
+  EXPERIMENT <- as.character( commandArgs(trailingOnly = TRUE)[2] )
 }
 
 main()

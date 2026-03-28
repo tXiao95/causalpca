@@ -27,8 +27,6 @@ source(here("R/simulate_data.R"))
 # -------------------------------------------------------------------------
 
 # 1. Outcome Regression: E[Y | X, C]
-# The DGP features non-linearities (tanh, pnorm) and interactions.
-# SL.earth (MARS) and SL.gam are excellent for smooth, bounded non-linear surfaces.
 well_specified_outcome_fitter <- function(Y, XC_df, ...) {
   SL_outcome_fitter(Y, XC_df, SL.lib = c("SL.glm", "SL.glmnet", "SL.earth"), ...)
 }
@@ -142,7 +140,7 @@ evaluate_method_group <- function(group, sim, n, task_id, x_eval_fixed, mu_true_
   if (group == "Base") {
     message("Running baseline methods")
     
-    t_pca <- system.time({ pca <- prcomp(X, center = TRUE, scale. = FALSE) })
+    t_pca <- system.time({ pca <- prcomp(X, center = TRUE, scale. = TRUE) })
     res_lists[[length(res_lists) + 1]] <- record_method("PCA", pca$rotation[, 1:d0, drop = FALSE], NA, t_pca["elapsed"], NA, do_ers = FALSE)
     
     t_pcca <- system.time({ b_pcca <- pCCA(Y, X, C)[, 1:d0, drop = FALSE] })
@@ -167,7 +165,8 @@ evaluate_method_group <- function(group, sim, n, task_id, x_eval_fixed, mu_true_
     
     t_cre <- system.time({
       cre_obj <- compute_new_response_and_exposure(Y = Y, X = X, C = C, method = causal_methods, L = 5,
-                                                   outcome_fitter = well_specified_outcome_fitter,
+                                                   #outcome_fitter = well_specified_outcome_fitter,
+                                                   outcome_fitter = DR_outcome_fitter,
                                                    gps_fitter = well_specified_gps_fitter)
     })
     amortized_time <- t_cre["elapsed"] / length(causal_methods)
@@ -193,7 +192,8 @@ evaluate_method_group <- function(group, sim, n, task_id, x_eval_fixed, mu_true_
     message("Running Residualized Pair (RP)...")
     t_cre <- system.time({
       cre_obj <- compute_new_response_and_exposure(Y = Y, X = X, C = C, method = "RP", L = 5,
-                                                   C_fitter = well_specified_C_fitter)
+                                                   #C_fitter = well_specified_C_fitter)
+                                                   C_fitter = DR_outcome_fitter)
     })
     
     new_X <- cre_obj$new_X; new_Y <- cre_obj$new_Y
@@ -244,6 +244,7 @@ main <- function() {
   message("Experiment: ", EXPERIMENT)
   
   N_vector <- c(100, 500, 1000, 2500, 5000)
+  #N_vector <- c(100)
   groups   <- c("Base", "RA_DR_PO", "RP", "Oracle")
   #N_vector <- c(500)
   #groups   <- c("Base")
@@ -299,8 +300,8 @@ main <- function() {
   final_diag <- rbindlist(lapply(tables_list, `[[`, "diag"), use.names = TRUE, fill = TRUE)
   final_ers  <- rbindlist(lapply(tables_list, `[[`, "ers"), use.names = TRUE, fill = TRUE)
   
-  # Save Output
-  out_dir <- here("outputs/simulation/jasa-initial-submission/final_results_nnet", EXPERIMENT)
+  
+  out_dir <- here("outputs/simulation/jasa-initial-submission", NAME, EXPERIMENT)
   if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
   
   base_filename <- paste0("sim-", sprintf("%03d", TASK_ID))
@@ -316,11 +317,13 @@ main <- function() {
 if(interactive()){
   TASK_ID    <- 2
   N_CORES    <- 1
+  NAME       <- "nnet_nonsparse"
   EXPERIMENT <- "interaction"
 } else{
   TASK_ID    <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
   N_CORES    <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 1))
-  EXPERIMENT <- as.character( commandArgs(trailingOnly=TRUE)[1] )
+  NAME       <- as.character( commandArgs(trailingOnly=TRUE)[1] )
+  EXPERIMENT <- as.character( commandArgs(trailingOnly=TRUE)[2] )
 }
 
 main()
