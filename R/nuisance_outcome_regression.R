@@ -96,7 +96,7 @@ SL_outcome_fitter <- function(Y, XC_df, SL.lib = c("SL.glm", "SL.glmnet", "SL.xg
 
 torch_set_num_threads(1)
 
-nn_outcome_fitter <- function(Y, XC_df, epochs = 150, lr = 0.005, seed = NULL, ...) {
+nn_outcome_fitter <- function(Y, XC_df, arch = "128_64_32", epochs = 1000, lr = 0.01, seed = NULL, ...) {
   
   # ENFORCE REPRODUCIBILITY: Use the simulation iteration seed if provided
   if (!is.null(seed)) {
@@ -117,16 +117,29 @@ nn_outcome_fitter <- function(Y, XC_df, epochs = 150, lr = 0.005, seed = NULL, .
   y_tensor <- torch_tensor(Y_mat, dtype = torch_float())
   
   # Architecture: 100x50 with SiLU
-  model <- nn_sequential(
-    nn_linear(ncol(X_mat), 100),
-    nn_silu(),
-    nn_linear(100, 50),
-    nn_silu(),
-    nn_linear(50, 1)
-  )
+  if(arch == "100_50"){
+    model <- nn_sequential(
+      nn_linear(ncol(X_mat), 100),
+      nn_silu(),
+      nn_linear(100, 50),
+      nn_silu(),
+      nn_linear(50, 1)
+    )
+  } else if(arch == "128_64_32"){
+    # Architecture: 128x64x32 with SiLU
+    model <- nn_sequential(
+      nn_linear(ncol(X_mat), 128), 
+      nn_silu(),
+      nn_linear(128, 64), 
+      nn_silu(),
+      nn_linear(64, 32), 
+      nn_silu(),
+      nn_linear(32, 1)
+    )
+  }
   
   optimizer <- optim_adam(model$parameters, lr = lr)
-  scheduler <- lr_step(optimizer, step_size = 50, gamma = 0.5)
+  scheduler <- lr_step(optimizer, step_size = 200, gamma = 0.5)
   criterion <- nn_mse_loss()
   
   # Training Loop
