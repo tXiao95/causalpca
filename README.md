@@ -43,7 +43,7 @@ Our theoretical and simulation results establish that:
 
 ## Real Data Application
 
-We apply the proposed causal SDR framework to a four-component PFAS mixture to study associations with infant birthweight in a cohort of 305 African-American mothers from the ATL-AA study. The analysis demonstrates how causal SDR can improve both interpretability of exposure mixtures and statistical efficiency in environmental mixture analyses. We additionally compare results with those of BKMR and qgcomp. 
+We apply the proposed causal SDR framework to a four-component PFAS mixture to study the causal effect of maternal PFAS exposure on infant birthweight in a cohort of 305 African-American mothers from the Atlanta African-American Maternal-Child Cohort study. The analysis demonstrates how causal SDR can improve both interpretability of exposure mixtures and statistical efficiency in environmental mixture analyses. We additionally compare results with those of BKMR and qgcomp. 
 
 ![](results/jasa-initial-submission/ATL-AA/ERS.png)
 
