@@ -11,7 +11,7 @@ Many existing methods for environmental mixtures possess important limitations:
 | BKMR | ✓ | ✗ | ✗ | ✗ |
 | WQS | ✗ | ✓ | ✗ | ✓ |
 | Quantile g-computation | ✗ | ✓ | ✓ | ✓ |
-| Principal components pursuit | Partial | Partial | ✗ | ✓ |
+| Principal components pursuit |  ✓ |  ✓ | ✗ | ✓ |
 | Proposed causal SDR | ✓ | ✓ | ✓ | ✓ |
 
 To address these limitations, we develop **causal sufficient dimension reduction (causal SDR)**, a framework for estimating low-dimensional representations of multiple continuous exposures that preserve the causal exposure-response surface (ERS). The output is essentially a causal PCA, where the principal components instead of chasing variance respect the underlying causal structure. 
