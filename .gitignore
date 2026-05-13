@@ -64,3 +64,6 @@ sandbox/
 
 code/birthweight/
 code/cytokines
+
+# ALl archive folders
+**/archive/
