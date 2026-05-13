@@ -1,6 +1,6 @@
 # Causal Sufficient Dimension Reduction for Multiple Continuous Exposures
 
-Environmental health studies increasingly seek to estimate the joint effects of multiple continuous exposures, such as air pollution components, PFAS, and chemical mixtures. This problem has been identified as a major priority area by the National Institute of Environmental Health Sciences (NIEHS). However, existing approaches often enforce tradeoffs between flexibility, interpretability, computational feasibility, and causal interpretability.
+Environmental health studies increasingly seek to estimate the joint effects of multiple continuous exposures, such as air pollution components, PFAS, and chemical mixtures. This problem has been identified as a major priority area by the National Institute of Environmental Health Sciences (NIEHS). However, existing approaches often enforce tradeoffs between flexibility, interpretability, computational feasibility, and causal interpretability. This repository contains code to reproduce the analyses from our study on causal sufficient dimension reduction (causal SDR), a framework for estimating and interpreting the causal effects of multiple continuous exposures through low-dimensional representations that preserve the causal exposure-response surface.
 
 ## Motivation
 
