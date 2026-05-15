@@ -24,10 +24,10 @@ Previous work by [Nabi et al. (2022)](https://proceedings.mlr.press/v180/nabi22a
 
 To circumvent these computational challenges, we propose a two-stage pseudo-outcome implementation for causal SDR. This strategy:
 
-- substantially simplifies implementation,
+- Simplifies implementation,
 - reduces nuisance estimation burden,
-- leverages existing tools from causal inference for continuous exposures and SDR, and
-- enables flexible downstream estimation of the causal ERS using the reduced exposure representation.
+- leverages existing tools from causal inference for continuous exposures and association-based SDR, and
+- enables flexible downstream estimation of the causal ERS using the reduced exposure.
 
 ## Main Contributions
 
@@ -36,7 +36,7 @@ Our theoretical and simulation results establish that:
 - causal SDR consistently recovers the causal central mean subspace,
 - the estimated structural dimension remains consistent even when pseudo-outcomes are estimated,
 - the convergence rate depends on the quality of pseudo-outcome estimation, and
-- downstream inference based on the reduced exposure is asymptotically equivalent to the oracle setting where the reduction is known.
+- downstream inference based on the reduced exposure is asymptotically equivalent to the oracle setting.
 
 ![](results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png)
 
@@ -66,7 +66,7 @@ This work has been presented as a [poster](https://github.com/tXiao95/causal-pca
 
 Within `results/`:
 
-- `final_results_nnet/` contains the primary results reported in the manuscript.
+- `main_paper_final_results_nnet/` contains the primary results reported in the manuscript.
 - `main_paper_final_results_SL_xgboost/` and `main_paper_final_results_nonsparse_nnet_128x64x32/` correspond to supplementary analyses.
 ---
 
