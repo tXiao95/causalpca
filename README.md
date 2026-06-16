@@ -1,5 +1,12 @@
 # Causal Sufficient Dimension Reduction for Multiple Continuous Exposures
 
+This repository contains the code for our preprint:
+
+> Hsiao TW, Chang HH, \& Nabi R (2026). *Causal Sufficient Dimension Reduction for Multiple Continuous Exposures with an Application to Environmental Mixtures*. arXiv. Online at
+> <https://doi.org/10.48550/arXiv.2606.14840>
+
+## Background
+
 Environmental health studies increasingly seek to estimate the joint effects of multiple continuous exposures, such as air pollution components, PFAS, and chemical mixtures. However, existing approaches often enforce tradeoffs between flexibility, interpretability, causal validity, and computational scalability. This repository contains code to reproduce the analyses from our study on causal sufficient dimension reduction (causal SDR), a proposed framework for estimating and interpreting the causal effects of multiple continuous exposures through low-dimensional representations that preserve the causal exposure-response surface.
 
 ## Motivation
