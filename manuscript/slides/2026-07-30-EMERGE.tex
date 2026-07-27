@@ -590,12 +590,11 @@ Natural strength
 \endhead
 qgcomp / WQS & \(d=1\) & Prespecified joint shift & Simple overall
 effect \\
-PCP / PCA & \(1<d<p\) & Exposure variation or patterns & Source/pattern
-discovery \\
-\textbf{CSDR} & \textbf{learn \(d\)} & \textbf{Causal response
-directions} & \textbf{Flexible causal summary} \\
+PCP / PCA & \(1<d<p\) & Exposure variation & Source/pattern discovery \\
 BKMR / BART & \(d=p\) & Full multivariate response & Nonlinearity and
 interactions \\
+\textbf{CSDR} & \textbf{learn \(d\)} & \textbf{Causal response
+directions} & \textbf{Flexible causal summary} \\
 \bottomrule\noalign{}
 \end{longtable}
 
@@ -603,8 +602,8 @@ interactions \\
 
 \begin{alertblock}{Key distinction}
 \phantomsection\label{key-distinction}
-PCP learns structure in \(X\); CSDR learns the structure in \(X\) needed
-to preserve the causal mean response.
+CSDR learns the structure in \(X\) needed to preserve the
+\textbf{causal} mean response.
 \end{alertblock}
 \end{frame}
 
@@ -1185,10 +1184,8 @@ response curves.
 \end{column}
 
 \begin{column}{0.41\linewidth}
-\begin{block}{Remember}
-\phantomsection\label{remember}
-CSDR does not replace:
-
+\begin{block}{CSDR does not replace}
+\phantomsection\label{csdr-does-not-replace}
 \begin{itemize}
 \tightlist
 \item
@@ -1240,6 +1237,31 @@ applied workflow.
   \scriptsize\texttt{github.com/tXiao95/csdr}}
 \end{column}
 \end{columns}
+\end{frame}
+
+\begin{frame}{Acknowledgements}
+\phantomsection\label{acknowledgements}
+\centering
+\large
+
+\method{Postdoctoral advisors}\\[0.16cm]
+\textbf{Dr. Howard Chang}
+\hspace{0.28cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.28cm}
+\textbf{Dr. Razieh Nabi}\\[0.12cm]
+\small For their mentorship, guidance, and support.
+
+\vspace{0.52cm}
+{\color{rulegray}\rule{0.72\linewidth}{0.6pt}}
+\vspace{0.46cm}
+
+\large
+\method{ATL-AA collaborators}\\[0.16cm]
+\textbf{Dr. Donghai Liang}
+\hspace{0.22cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.22cm}
+\textbf{Youran Tan}
+\hspace{0.22cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.22cm}
+\textbf{Dr. Anne Dunlop}\\[0.12cm]
+\small For sharing the ATL-AA cohort data and for their thoughtful discussions.
 \end{frame}
 
 \section{Questions?}\label{questions}

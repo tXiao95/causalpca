@@ -71,15 +71,15 @@ and scientific goal should determine the analysis.
 | Approach | Dimension | What is learned? | Natural strength |
 |:--|:--:|:--|:--|
 | qgcomp / WQS | $d=1$ | Prespecified joint shift | Simple overall effect |
-| PCP / PCA | $1<d<p$ | Exposure variation or patterns | Source/pattern discovery |
-| **CSDR** | **learn $d$** | **Causal response directions** | **Flexible causal summary** |
+| PCP / PCA | $1<d<p$ | Exposure variation | Source/pattern discovery |
 | BKMR / BART | $d=p$ | Full multivariate response | Nonlinearity and interactions |
+| **CSDR** | **learn $d$** | **Causal response directions** | **Flexible causal summary** |
 
 \normalsize
 
 ### Key distinction {.alert}
 
-PCP learns structure in $X$; CSDR learns the structure in $X$ needed to preserve the causal mean response.
+CSDR learns the structure in $X$ needed to preserve the **causal** mean response.
 
 <!-- SPEAKER NOTES:
 These methods answer different questions. qgcomp estimates a common quantile-shift
@@ -636,9 +636,7 @@ folds, evaluation support, and full-pipeline uncertainty procedure.
 :::
 
 ::: {.column width="41%"}
-### Remember
-
-CSDR does not replace:
+### CSDR does not replace
 
 - Study design
 - Confounder selection
@@ -690,6 +688,38 @@ data-adaptive summary.
 <!-- SPEAKER NOTES:
 Leave this slide visible for questions so audience members have time to scan. The
 left QR code opens the arXiv abstract page; the right opens the csdr repository.
+-->
+
+## Acknowledgements
+
+```{=tex}
+\centering
+\large
+
+\method{Postdoctoral advisors}\\[0.16cm]
+\textbf{Dr. Howard Chang}
+\hspace{0.28cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.28cm}
+\textbf{Dr. Razieh Nabi}\\[0.12cm]
+\small For their mentorship, guidance, and support.
+
+\vspace{0.52cm}
+{\color{rulegray}\rule{0.72\linewidth}{0.6pt}}
+\vspace{0.46cm}
+
+\large
+\method{ATL-AA collaborators}\\[0.16cm]
+\textbf{Dr. Donghai Liang}
+\hspace{0.22cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.22cm}
+\textbf{Youran Tan}
+\hspace{0.22cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.22cm}
+\textbf{Dr. Anne Dunlop}\\[0.12cm]
+\small For sharing the ATL-AA cohort data and for their thoughtful discussions.
+```
+
+<!-- SPEAKER NOTES:
+Thank Howard and Razieh for their postdoctoral mentorship. Thank Donghai, Youran,
+and Anne for making the ATL-AA application possible through data sharing and
+collaboration.
 -->
 
 # Questions?
