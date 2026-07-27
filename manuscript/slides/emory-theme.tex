@@ -1,0 +1,271 @@
+% ---------- Packages ----------
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{appendixnumberbeamer}
+\usepackage{etoolbox}
+
+% ---------- Emory palette ----------
+\definecolor{emoryblue}{HTML}{1E376D}
+\definecolor{emorygold}{HTML}{D9AB28}
+\definecolor{textcharcoal}{HTML}{20242B}
+\definecolor{secondarygray}{HTML}{667085}
+\definecolor{lightpanel}{HTML}{F2F5F8}
+\definecolor{rulegray}{HTML}{D9DEE5}
+\definecolor{softgold}{HTML}{FBF5E6}
+
+% ---------- Global appearance ----------
+\setbeamercolor{normal text}{fg=textcharcoal,bg=white}
+\setbeamercolor{structure}{fg=emoryblue}
+\setbeamercolor{alerted text}{fg=emorygold}
+\setbeamercolor{background canvas}{bg=white}
+\setbeamercolor{page number in head/foot}{
+  fg=secondarygray,
+  bg=white
+}
+
+\setbeamerfont{title}{
+  series=\bfseries,
+  size=\LARGE
+}
+
+\setbeamerfont{subtitle}{
+  size=\large
+}
+
+\setbeamerfont{frametitle}{
+  series=\bfseries,
+  size=\Large
+}
+
+\setbeamerfont{section title}{
+  series=\bfseries,
+  size=\huge
+}
+
+\setbeamerfont{block title}{
+  series=\bfseries
+}
+
+\setbeamerfont{page number in head/foot}{
+  size=\scriptsize
+}
+
+\setbeamersize{
+  text margin left=0.60cm,
+  text margin right=0.60cm
+}
+
+\setbeamertemplate{navigation symbols}{}
+
+% ---------- Title slide ----------
+% The logo is added only when the file exists.
+\IfFileExists{ShieldEmory_hz_280_pres2023.png}{%
+  \titlegraphic{%
+    \hfill
+    \includegraphics[
+      width=3.0cm
+    ]{ShieldEmory_hz_280_pres2023.png}%
+  }%
+}{}
+
+\setbeamercolor{title}{
+  fg=emoryblue,
+  bg=white
+}
+
+\setbeamercolor{subtitle}{
+  fg=textcharcoal,
+  bg=white
+}
+
+\setbeamercolor{author}{
+  fg=textcharcoal,
+  bg=white
+}
+
+\setbeamercolor{institute}{
+  fg=secondarygray,
+  bg=white
+}
+
+\setbeamercolor{date}{
+  fg=secondarygray,
+  bg=white
+}
+
+\setbeamercolor{title separator}{
+  fg=emorygold
+}
+
+\setbeamertemplate{title separator}{%
+  \par
+  \kern0.55em
+  {\color{emorygold}\rule{1.55cm}{1.8pt}}
+  \par
+  \kern0.55em
+}
+
+% ---------- Compact full-width frame title bar ----------
+\setbeamercolor{frametitle}{
+  fg=white,
+  bg=emoryblue
+}
+
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip
+  \begin{beamercolorbox}[
+    wd=\paperwidth,
+    ht=0.72cm,
+    dp=0.23cm,
+    leftskip=0.60cm,
+    rightskip=0.45cm
+  ]{frametitle}
+    \usebeamerfont{frametitle}
+    \insertframetitle
+  \end{beamercolorbox}
+}
+
+% ---------- Section dividers ----------
+\setbeamercolor{section page}{
+  fg=white,
+  bg=emoryblue
+}
+
+\setbeamertemplate{section page}{%
+  \begin{centering}
+    \begin{beamercolorbox}[
+      wd=\paperwidth,
+      ht=\paperheight,
+      center
+    ]{section page}
+      \vspace*{0.29\paperheight}
+
+      {
+        \usebeamerfont{section title}
+        \insertsection
+        \par
+      }
+
+      \vspace{0.45cm}
+
+      {
+        \color{emorygold}
+        \rule{2.1cm}{2.2pt}
+      }
+    \end{beamercolorbox}
+  \end{centering}
+}
+
+\AtBeginSection[]{%
+  \begin{frame}[
+    plain,
+    noframenumbering
+  ]
+    \sectionpage
+  \end{frame}
+}
+
+% ---------- Lists ----------
+\setbeamertemplate{itemize item}{%
+  \color{emorygold}
+  \raisebox{0.12em}{
+    \scriptsize$\blacktriangleright$
+  }
+}
+
+\setbeamertemplate{itemize subitem}{%
+  \color{emoryblue}
+  \raisebox{0.08em}{
+    \tiny$\blacktriangleright$
+  }
+}
+
+\setbeamertemplate{enumerate item}{%
+  \color{emoryblue}
+  \insertenumlabel.
+}
+
+% ---------- Blocks ----------
+\setbeamertemplate{blocks}[rounded][shadow=false]
+
+% Standard block: blue heading, pale blue body
+\setbeamercolor{block title}{
+  fg=white,
+  bg=emoryblue
+}
+
+\setbeamercolor{block body}{
+  fg=textcharcoal,
+  bg=lightpanel
+}
+
+% Alert block: gold heading, pale gold body
+\setbeamercolor{block title alerted}{
+  fg=textcharcoal,
+  bg=emorygold
+}
+
+\setbeamercolor{block body alerted}{
+  fg=textcharcoal,
+  bg=softgold
+}
+
+% Example block: gray heading
+\setbeamercolor{block title example}{
+  fg=white,
+  bg=secondarygray
+}
+
+\setbeamercolor{block body example}{
+  fg=textcharcoal,
+  bg=lightpanel
+}
+
+% ---------- Footer ----------
+% Hides numbering on the title and section-divider slides.
+% Subtracts the title slide so the first content slide is 1/N.
+\setbeamertemplate{footline}{%
+  \leavevmode
+
+  \ifnum\value{framenumber}>1
+    \hbox{%
+      \begin{beamercolorbox}[
+        wd=\paperwidth,
+        ht=0.28cm,
+        dp=0.16cm,
+        rightskip=0.55cm
+      ]{page number in head/foot}
+        \hfill
+        \the\numexpr\value{framenumber}-1\relax
+        \,/\,%
+        \the\numexpr\inserttotalframenumber-1\relax
+      \end{beamercolorbox}
+    }
+  \fi
+}
+
+% ---------- Tables and code ----------
+\AtBeginEnvironment{tabular}{
+  \color{textcharcoal}
+}
+
+\AtBeginDocument{
+  \definecolor{shadecolor}{HTML}{F2F5F8}
+}
+
+% ---------- Semantic emphasis commands ----------
+% Proposed method or other primary concept
+\newcommand{\method}[1]{%
+  \textcolor{emoryblue}{\textbf{#1}}%
+}
+
+% Focal element; safe inside equations
+\newcommand{\focus}[1]{%
+  \textcolor{emorygold}{#1}%
+}
+
+% Secondary explanation
+\newcommand{\muted}[1]{%
+  \textcolor{secondarygray}{#1}%
+}

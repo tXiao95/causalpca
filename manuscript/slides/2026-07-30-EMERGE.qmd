@@ -1,0 +1,92 @@
+---
+title: "Causal sufficient dimension reduction for multiple continuous exposures"
+subtitle: "An application to environmental mixtures analysis"
+author: 'Thomas Hsiao, Ph.D. \newline March 19, 2026'
+institute: 'Emory University \newline Rollins School of Public Health \newline Department of Biostatistics and Bioinformatics'
+date: ""
+
+bibliography: references.bib
+
+format:
+  beamer:
+    aspectratio: 169
+    classoption: ["11pt"]
+    pdf-engine: xelatex
+
+    theme: metropolis
+    colortheme: default
+    fonttheme: default
+
+    slide-level: 2
+    section-titles: true
+    incremental: false
+    navigation: empty
+
+    keep-tex: true
+
+    include-in-header:
+      - file: emory-theme.tex
+---
+
+# Introduction
+
+## Existing approaches force a difficult tradeoff
+
+- Single-index methods emphasize interpretability.
+- Full exposure-response methods emphasize flexibility.
+- \method{Causal SDR} targets a low-dimensional causal representation.
+
+## The target is a causal subspace
+
+### Definition
+
+We seek a matrix $\beta\in\mathbb{R}^{p\times d}$ such that
+
+$$
+\mu(x)=\mu_\beta(\beta^\top x), \qquad d\ll p.
+$$
+
+### Key implication {.alert}
+
+The intervention-response surface depends on $x$ only through \focus{$\beta^\top x$}.
+
+# Results
+
+## Causal estimators recover the target subspace
+
+| Method | Adjusts for confounding | Target |
+|:--|:--:|:--|
+| MAVE | No | Association subspace |
+| RA-MAVE | Yes | Causal subspace |
+| DR-MAVE | Yes | Causal subspace |
+
+## The first-stage error appears explicitly
+
+$$
+\left\|(I-\widehat\beta\widehat\beta^\top)\beta_0\right\|
+=
+O_p\!\left(
+  h^3+h\delta_n+h^{-1}\delta_n^2+
+  \focus{h^{-1}R_n}
+\right).
+$$
+
+\muted{Gold is reserved for the term being discussed; red is reserved for genuine warnings.}
+
+# Conclusion
+
+## Takeaway
+
+### Design rule
+
+Use blue for structure and the proposed method, gold for one focal element, and charcoal for ordinary content.
+
+```{=tex}
+\appendix
+```
+
+# Appendix
+
+## Backup slide
+
+The appendix is excluded from the denominator in the slide counter.
