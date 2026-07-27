@@ -1,9 +1,10 @@
 ---
-title: "Causal sufficient dimension reduction for multiple continuous exposures"
-subtitle: "An application to environmental mixtures analysis"
-author: 'Thomas Hsiao, Ph.D. \newline March 19, 2026'
+title: "Causal sufficient dimension reduction for studying environmental mixtures"
+subtitle: 'An applied introduction and tutorial for the \textup{\texttt{csdr}} R package'
+author: 'Thomas Hsiao, Ph.D. \newline \textcolor{secondarygray}{Postdoctoral Fellow}'
 institute: 'Emory University \newline Rollins School of Public Health \newline Department of Biostatistics and Bioinformatics'
-date: ""
+date: 2026-07-30
+date-format: "MMMM D, YYYY"
 
 bibliography: references.bib
 
@@ -28,65 +29,694 @@ format:
       - file: emory-theme.tex
 ---
 
-# Introduction
+# Why CSDR?
 
-## Existing approaches force a difficult tradeoff
+## What do we want to learn from a mixture?
 
-- Single-index methods emphasize interpretability.
-- Full exposure-response methods emphasize flexibility.
-- \method{Causal SDR} targets a low-dimensional causal representation.
+::: {.columns}
+::: {.column width="52%"}
+### Scientific goals
 
-## The target is a causal subspace
+- Estimate the **joint health effect**
+- Learn the **shape** of the response
+- Identify **important contributors**
+- Find a useful **mixture summary**
 
-### Definition
+\vspace{0.03cm}
+:::
 
-We seek a matrix $\beta\in\mathbb{R}^{p\times d}$ such that
+::: {.column width="44%"}
+### The recurring problem {.alert}
 
-$$
-\mu(x)=\mu_\beta(\beta^\top x), \qquad d\ll p.
-$$
-
-### Key implication {.alert}
-
-The intervention-response surface depends on $x$ only through \focus{$\beta^\top x$}.
-
-# Results
-
-## Causal estimators recover the target subspace
-
-| Method | Adjusts for confounding | Target |
-|:--|:--:|:--|
-| MAVE | No | Association subspace |
-| RA-MAVE | Yes | Causal subspace |
-| DR-MAVE | Yes | Causal subspace |
-
-## The first-stage error appears explicitly
+Many correlated exposures and confounding---all at once.
 
 $$
-\left\|(I-\widehat\beta\widehat\beta^\top)\beta_0\right\|
-=
-O_p\!\left(
-  h^3+h\delta_n+h^{-1}\delta_n^2+
-  \focus{h^{-1}R_n}
-\right).
+(X_1,\ldots,X_p)\longrightarrow Y
+$$
+:::
+:::
+
+\muted{Different methods prioritize different scientific questions.}
+
+<!-- SPEAKER NOTES:
+Environmental mixtures are difficult because we are asking several questions at once.
+The point of this talk is not that one method replaces every other method; the estimand
+and scientific goal should determine the analysis.
+-->
+
+## Mixtures methods make different bargains
+
+\scriptsize
+
+| Approach | Dimension | What is learned? | Natural strength |
+|:--|:--:|:--|:--|
+| qgcomp / WQS | $d=1$ | Prespecified joint shift | Simple overall effect |
+| PCP / PCA | $1<d<p$ | Exposure variation or patterns | Source/pattern discovery |
+| **CSDR** | **learn $d$** | **Causal response directions** | **Flexible causal summary** |
+| BKMR / BART | $d=p$ | Full multivariate response | Nonlinearity and interactions |
+
+\normalsize
+
+### Key distinction {.alert}
+
+PCP learns structure in $X$; CSDR learns the structure in $X$ needed to preserve the causal mean response.
+
+<!-- SPEAKER NOTES:
+These methods answer different questions. qgcomp estimates a common quantile-shift
+contrast. BKMR keeps the full exposure vector. PCP is extremely useful for exposure
+pattern discovery, including LOD and unusual-event structure, but it does not use Y.
+Avoid saying that these methods are "not causal"; emphasize their different estimands.
+-->
+
+## Why not always estimate the full surface?
+
+::: {.columns}
+::: {.column width="30%"}
+### One exposure
+
+Many observations support a curve.
+
+$$
+\mu(x_1)
+$$
+:::
+
+::: {.column width="30%"}
+### Two exposures
+
+Observations thin across a surface.
+
+$$
+\mu(x_1,x_2)
+$$
+:::
+
+::: {.column width="34%"}
+### Many exposures
+
+Most joint exposure combinations are sparse.
+
+$$
+\mu(x_1,\ldots,x_p)
+$$
+:::
+:::
+
+### Consequence {.alert}
+
+More dimensions mean harder nuisance estimation, weaker support, and a response surface that is difficult to communicate.
+
+<!-- SPEAKER NOTES:
+Flexible machine learning does not create information in unsupported parts of exposure
+space. Dimension reduction is not merely a visualization trick: it can improve the
+statistical problem that comes afterward.
+-->
+
+## CSDR searches for the intrinsic causal dimension
+
+$$
+\mu(x)=\mathbb{E}(Y^x)=g(\beta^\top x),
+\qquad
+\beta\in\mathbb{R}^{p\times d},
+\qquad
+d\ll p.
 $$
 
-\muted{Gold is reserved for the term being discussed; red is reserved for genuine warnings.}
+\vspace{0.20cm}
 
-# Conclusion
+::: {.columns}
+::: {.column width="29%"}
+### Exposures
 
-## Takeaway
+$$
+X_1,\ X_2,\ \ldots,\ X_p
+$$
+:::
 
-### Design rule
+::: {.column width="33%"}
+### Causal summary
 
-Use blue for structure and the proposed method, gold for one focal element, and charcoal for ordinary content.
+$$
+Z=\beta^\top X\in\mathbb{R}^d
+$$
+:::
 
-```{=tex}
-\appendix
+::: {.column width="32%"}
+### Flexible response
+
+$$
+\mu_\beta(z)=g(z)
+$$
+:::
+:::
+
+### Plain-language target {.alert}
+
+Replace $p$ exposures with $d$ summaries **without losing the causal mean response**.
+
+<!-- SPEAKER NOTES:
+The response need not be linear. The linearity is in the reduction; g remains flexible.
+A single-index model is d=1 and a full response surface is d=p. CSDR learns where the
+problem lies between those extremes.
+-->
+
+## Causal directions can differ from associational directions
+
+::: {.columns}
+::: {.column width="47%"}
+### Observed regression
+
+$$
+\mathbb{E}(Y\mid X=x)
+$$
+
+Confounding can create or obscure exposure directions associated with the outcome.
+
+$$
+X\longleftarrow C\longrightarrow Y
+$$
+:::
+
+::: {.column width="47%"}
+### Causal response
+
+$$
+\mathbb{E}(Y^x)
+$$
+
+CSDR seeks directions that preserve the response under interventions on $X$.
+
+$$
+X\longrightarrow Y
+$$
+:::
+:::
+
+### The distinction that matters {.alert}
+
+\centering
+\Large Association-preserving $\boldsymbol{\neq}$ causal-effect-preserving
+
+<!-- SPEAKER NOTES:
+PCA is outcome-blind, but even supervised SDR is not automatically causal.
+Ordinary MAVE preserves E(Y|X), which can be a different surface from E(Y^x).
+CSDR adjusts for C before learning the directions.
+-->
+
+## A modular two-stage strategy
+
+::: {.columns}
+::: {.column width="31%"}
+### 1. Adjust
+
+Use $(Y,X,C)$ to construct a cross-fitted causal response $\widetilde Y$.
+
+$$
+\mathbb{E}(\widetilde Y\mid X)=\mu(X)
+$$
+:::
+
+::: {.column width="31%"}
+### 2. Reduce
+
+Apply sufficient dimension reduction to $(\widetilde Y,X)$.
+
+$$
+(\widehat\beta,\widehat d)
+$$
+:::
+
+::: {.column width="31%"}
+### 3. Estimate
+
+Project exposures and estimate the causal response in $d$ dimensions.
+
+$$
+\widehat Z=\widehat\beta^\top X
+$$
+:::
+:::
+
+\vspace{0.25cm}
+
+\centering
+\method{Causal nuisance estimation} $\longrightarrow$
+\method{standard SDR} $\longrightarrow$
+\method{reduced causal ERS}
+
+<!-- SPEAKER NOTES:
+The modularity is the implementation advantage. The package supports RA, DR,
+pseudo-outcome, and residual-pair transformations. Use DR as the primary workflow
+because it is the package default; introduce RA as a lower-cost sensitivity analysis.
+-->
+
+## What does the researcher get?
+
+::: {.columns}
+::: {.column width="30%"}
+### Dimension
+
+\centering
+\Huge $\widehat d$
+
+\normalsize
+How many causal directions are needed?
+:::
+
+::: {.column width="32%"}
+### Importance
+
+\centering
+\Huge $\widehat\lambda_j$
+
+\normalsize
+Which exposures contribute to the subspace?
+:::
+
+::: {.column width="32%"}
+### Response
+
+\centering
+\Huge $\widehat\mu(z)$
+
+\normalsize
+What is the shape of the joint causal response?
+:::
+:::
+
+\vspace{0.35cm}
+
+### Subspace importance score {.alert}
+
+$$
+\lambda_j=P_{jj},
+\qquad
+P=\beta(\beta^\top\beta)^{-1}\beta^\top,
+\qquad
+\sum_{j=1}^p\lambda_j=d.
+$$
+
+<!-- SPEAKER NOTES:
+Do not interpret a particular basis when d>1. The subspace is identified, but a basis
+can rotate. SIS is basis-invariant, between zero and one, and sums to d. Recommend
+bootstrap intervals in practice.
+-->
+
+# From method to evidence
+
+## Reduction can improve the final scientific estimate
+
+![Pointwise coverage for the causal exposure--response surface](../../results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png){#fig-simulation-coverage width="60%"}
+
+\footnotesize
+
+\method{Simulation message:} CSDR improved accuracy and coverage versus full $X$ and noncausal reductions.
+
+<!-- SPEAKER NOTES:
+Orient the audience to the figure rather than describing every panel. Focus on the
+comparison among Oracle, Causal SDR, Full X, MAVE, and pCCA. State the caveat:
+performance depends on low-dimensional causal structure and sufficiently accurate
+nuisance estimation.
+-->
+
+## PFAS application: four exposures became one direction
+
+::: {.columns}
+::: {.column width="39%"}
+\small
+
+**Study:** 305 term births in the Atlanta African American Maternal-Child Cohort
+
+**Exposures:** PFOS, PFOA, PFNA, PFHxS
+
+**Selected dimension:** $\widehat d=1$
+
+$$
+\begin{aligned}
+\widehat Z={}&0.77\,PFOS+0.14\,PFOA\\
+             &+0.26\,PFNA-0.56\,PFHxS
+\end{aligned}
+$$
+
+\textbf{SIS:} PFOS 0.60; PFOA 0.02; PFNA 0.07; PFHxS 0.31
+:::
+
+::: {.column width="58%"}
+![](../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf){width="90%"}
+:::
+:::
+
+<!-- SPEAKER NOTES:
+The one-dimensional result makes the joint response displayable as a curve.
+Emphasize the rug: the central region is much better supported than the extremes.
+PFOS contributes most to the subspace and PFHxS acts in the opposite direction.
+qgcomp and BKMR reached broadly compatible substantive conclusions, but their
+estimands and outputs differ.
+-->
+
+## Where CSDR fits in the analyst's toolbox
+
+\small
+
+| If the scientific question is... | A natural starting point is... |
+|:--|:--|
+| Effect of increasing all exposures by one quantile | qgcomp |
+| Flexible response in the original $p$-dimensional space | BKMR / BART |
+| Shared exposure patterns, sources, or unusual events | PCP / `pcpr` |
+| Lowest-dimensional summary preserving the causal mean | **CSDR / `csdr`** |
+
+\normalsize
+
+### CSDR is especially attractive when {.alert}
+
+A low-dimensional causal structure is scientifically plausible, but neither $d=1$ nor $d=p$ should be imposed in advance.
+
+<!-- SPEAKER NOTES:
+This slide is the fair comparison. Do not pitch CSDR as replacing qgcomp, BKMR, or
+PCP. Pitch it as supplying a target that was missing from the toolbox.
+-->
+
+# The `csdr` workflow
+
+## Every analysis starts with three objects
+
+::: {.columns}
+::: {.column width="60%"}
+\scriptsize
+
+```r
+library(csdr)
+
+Y <- dat$birth_weight
+
+A_vars <- c("PFOS", "PFOA", "PFNA", "PFHxS")
+A <- dat[A_vars]
+
+C <- model.matrix(
+  ~ age + bmi + education + tobacco +
+    marijuana + sex,
+  data = dat
+)[, -1, drop = FALSE]
 ```
+:::
+
+::: {.column width="36%"}
+### Outcome
+
+$Y$: health endpoint
+
+### Exposures
+
+$A$: continuous mixture
+
+### Confounders
+
+$C$: sufficient adjustment set
+:::
+:::
+
+\small
+
+\method{Notation bridge:} The package calls the exposure mixture \texttt{A}; this is the $X$ used in the causal framework.
+
+<!-- SPEAKER NOTES:
+Install the development package once with
+remotes::install_github("tXiao95/csdr"). The package requires finite numeric inputs
+with unique, nonoverlapping column names, so model.matrix handles categorical
+covariates. It does not transform exposures or choose the causal adjustment set.
+-->
+
+## Fit the causal subspace
+
+::: {.columns}
+::: {.column width="62%"}
+\scriptsize
+
+```r
+learners <- csdr_learners(sl_library = "SL.glm")
+
+fit <- csdr(
+  Y = Y, A = A, C = C,
+  variants = "DR",
+  d = NULL, max_dim = 3,
+  L = 5, seed = 42,
+  learners = learners,
+  keep_nuisance = TRUE,
+  verbose = FALSE
+)
+```
+:::
+
+::: {.column width="34%"}
+### What happens
+
+1. Cross-fit nuisance models
+2. Construct $\widetilde Y$
+3. Run MAVE
+4. Select $\widehat d$
+5. Return the fitted subspace
+:::
+:::
+
+\muted{\texttt{DR} is the package default. \texttt{SL.glm} keeps the tutorial fast; use a prespecified richer library for the substantive analysis.}
+
+<!-- SPEAKER NOTES:
+Teach the public high-level interface. With d=NULL, MAVE::mave.dim selects the
+dimension; max_dim limits the search. DR uses both an outcome regression and a
+generalized propensity score. keep_nuisance=TRUE supports later diagnostics but makes
+the saved object larger. Point out the seed and folds because reproducibility matters.
+-->
+
+## Inspect dimension and importance before effects
+
+::: {.columns}
+::: {.column width="47%"}
+\scriptsize
+
+```r
+summary(fit)
+
+B_hat <- coef(fit, variant = "DR")
+Z_hat <- scores(fit, variant = "DR")
+
+mave <- mave_fits(fit, variant = "DR")
+dim_selection <- mave$dimension_selection
+
+Q_hat <- qr.Q(qr(B_hat))
+sis <- rowSums(Q_hat^2)
+```
+
+\small
+
+\textbf{PFAS SIS:} PFOS 0.60; PFOA 0.02; PFNA 0.07; PFHxS 0.31
+:::
+
+::: {.column width="49%"}
+### Visual placeholder {.alert}
+
+\centering
+\vspace{0.20cm}
+
+\fbox{\parbox[c][3.0cm][c]{0.88\linewidth}{
+\centering
+\textbf{Replace with package output}\\[0.15cm]
+Dimension CV curve\\
++\\
+SIS dot plot with bootstrap intervals
+}}
+:::
+:::
+
+<!-- SPEAKER NOTES:
+Use the package accessors instead of reaching inside the raw MAVE object. The selected
+dimension appears in summary(fit), while mave_fits exposes the raw selection object.
+The package does not yet export an importance or plotting helper, so SIS and these
+graphics remain custom. Stress that raw beta coefficients are not the preferred
+importance estimand when d>1.
+-->
+
+## Estimate the response in the reduced exposure
+
+::: {.columns}
+::: {.column width="47%"}
+\tiny
+
+```r
+z_grid <- matrix(seq(
+  quantile(Z_hat[, 1], 0.05),
+  quantile(Z_hat[, 1], 0.95),
+  length.out = 50
+), ncol = 1)
+
+ers <- estimate_ers(
+  Y = Y, A = Z_hat, C = C,
+  a_eval = z_grid, estimator = "DR",
+  L = 5, seed = 42,
+  verbose = FALSE
+)
+
+ers$results
+```
+:::
+
+::: {.column width="50%"}
+![](../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf){width="86%"}
+:::
+:::
+
+\small
+
+\method{Read the rug before the curve:} Uncertainty and causal interpretation are strongest where the reduced exposure has adequate support.
+
+<!-- SPEAKER NOTES:
+estimate_ers does not accept a csdr fit directly: scores(fit) supplies its exposure
+input. Explain that the final causal surface is re-estimated after reduction. Build
+the plot verbally in three layers: estimate, interval, observed support. If d is
+greater than one, use a contour, surface, or prespecified slices rather than silently
+discarding dimensions. The ERS intervals condition on the learned score; uncertainty
+from learning the direction requires resampling the complete CSDR-to-ERS pipeline.
+-->
+
+## A credible analysis includes diagnostics
+
+::: {.columns}
+::: {.column width="45%"}
+### Check
+
+- Dimension-selection profile
+- Distribution and support of $\widehat Z$
+- Nuisance-model performance
+- RA versus DR sensitivity
+- Bootstrap SIS intervals
+:::
+
+::: {.column width="51%"}
+\tiny
+
+```r
+fit_sens <- csdr(
+  Y = Y, A = A, C = C,
+  variants = c("RA", "DR"),
+  L = 5, seed = 42,
+  learners = learners,
+  verbose = FALSE
+)
+
+summary(fit_sens)
+
+outcome_fits <- nuisance_fits(fit, role = "outcome")
+gps_fits <- nuisance_fits(fit, role = "gps")
+```
+:::
+:::
+
+\method{Shared folds:} Compare RA and DR dimensions, subspaces, and response curves.
+
+<!-- SPEAKER NOTES:
+CSDR reduces the exposure dimension; it does not remove causal identification
+assumptions. Fitting RA and DR together reuses compatible nuisance work and the same
+fold assignments. nuisance_fits is available because the primary fit retained those
+objects. Actual performance metrics depend on the learner class; there is not yet a
+single check(fit) method. Report the adjustment set, preprocessing, learner library,
+folds, evaluation support, and full-pipeline uncertainty procedure.
+-->
+
+# Takeaways
+
+## When should I use CSDR?
+
+::: {.columns}
+::: {.column width="55%"}
+### Use CSDR when you want
+
+- A **joint causal exposure--response**
+- A **data-adaptive dimension**
+- A flexible nonlinear response
+- Exposure contribution summaries
+:::
+
+::: {.column width="41%"}
+### Remember
+
+CSDR does not replace:
+
+- Study design
+- Confounder selection
+- Positivity assessment
+- Sensitivity analysis
+:::
+:::
+
+### One-sentence takeaway {.alert}
+
+CSDR learns the smallest exposure representation needed to preserve the causal mean response—and `csdr` turns that target into an applied workflow.
+
+<!-- SPEAKER NOTES:
+Close by returning to method choice. If the question is a one-quantile joint shift,
+qgcomp may be right. If the full p-dimensional surface is the object, use BKMR.
+If exposure patterns are the object, use PCP. Use CSDR for a causally sufficient,
+data-adaptive summary.
+-->
+
+## Paper and package
+
+\centering
+\vspace{0.18cm}
+
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.46\textwidth}
+\centering
+\href{https://arxiv.org/abs/2606.14840}{%
+  \includegraphics[height=0.72cm]{assets/arxiv-logo.png}}\\[0.13cm]
+\href{https://arxiv.org/abs/2606.14840}{%
+  \includegraphics[width=3.05cm]{assets/qr-arxiv.png}}\\[0.10cm]
+\textbf{CSDR preprint}\\[-0.01cm]
+\href{https://arxiv.org/abs/2606.14840}{%
+  \scriptsize\texttt{arxiv.org/abs/2606.14840}}
+\end{column}
+
+\begin{column}{0.46\textwidth}
+\centering
+\href{https://github.com/tXiao95/csdr}{%
+  \includegraphics[height=0.72cm]{assets/github-invertocat.png}}\\[0.13cm]
+\href{https://github.com/tXiao95/csdr}{%
+  \includegraphics[width=3.05cm]{assets/qr-github.png}}\\[0.10cm]
+\textbf{\texttt{csdr} R package}\\[-0.01cm]
+\href{https://github.com/tXiao95/csdr}{%
+  \scriptsize\texttt{github.com/tXiao95/csdr}}
+\end{column}
+\end{columns}
+
+<!-- SPEAKER NOTES:
+Leave this slide visible for questions so audience members have time to scan. The
+left QR code opens the arXiv abstract page; the right opens the csdr repository.
+-->
+
+# Questions?
 
 # Appendix
 
-## Backup slide
+## Identification assumptions
 
-The appendix is excluded from the denominator in the slide counter.
+1. **Consistency:** observed outcomes agree with potential outcomes under the observed exposure.
+2. **Conditional exchangeability:** $Y^x\perp\!\!\!\perp X\mid C$.
+3. **Positivity:** exposure values of interest are supported within levels of $C$.
+
+### Practical reminder {.alert}
+
+Dimension reduction may improve the support problem, but it does not justify extrapolation or repair an inadequate adjustment set.
+
+## Choosing among causal response constructions
+
+\small
+
+| Construction | Main nuisance inputs | Practical role |
+|:--|:--|:--|
+| RA | Outcome regression | Lower-cost sensitivity analysis |
+| DR | Outcome regression + GPS | Package default; robust to one correctly specified nuisance component |
+| PO | Outcome regression + GPS | Doubly robust but noisier SDR response |
+| RP | Models for $E(Y\mid C)$ and $E(A_j\mid C)$ | Efficient under additive-confounding structure |
+
+\normalsize
+
+\muted{Teach the DR workflow once; use RA as the clearest sensitivity analysis if time permits.}

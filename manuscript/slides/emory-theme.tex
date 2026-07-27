@@ -1,13 +1,11 @@
 % ---------- Packages ----------
 \usepackage{booktabs}
-\usepackage{multirow}
-\usepackage{multicol}
-\usepackage{appendixnumberbeamer}
 \usepackage{etoolbox}
 
 % ---------- Emory palette ----------
 \definecolor{emoryblue}{HTML}{1E376D}
 \definecolor{emorygold}{HTML}{D9AB28}
+\definecolor{emorygolddark}{HTML}{8A5A00}
 \definecolor{textcharcoal}{HTML}{20242B}
 \definecolor{secondarygray}{HTML}{667085}
 \definecolor{lightpanel}{HTML}{F2F5F8}
@@ -17,7 +15,7 @@
 % ---------- Global appearance ----------
 \setbeamercolor{normal text}{fg=textcharcoal,bg=white}
 \setbeamercolor{structure}{fg=emoryblue}
-\setbeamercolor{alerted text}{fg=emorygold}
+\setbeamercolor{alerted text}{fg=emorygolddark}
 \setbeamercolor{background canvas}{bg=white}
 \setbeamercolor{page number in head/foot}{
   fg=secondarygray,
@@ -30,6 +28,7 @@
 }
 
 \setbeamerfont{subtitle}{
+  shape=\itshape,
   size=\large
 }
 
@@ -57,17 +56,6 @@
 }
 
 \setbeamertemplate{navigation symbols}{}
-
-% ---------- Title slide ----------
-% The logo is added only when the file exists.
-\IfFileExists{ShieldEmory_hz_280_pres2023.png}{%
-  \titlegraphic{%
-    \hfill
-    \includegraphics[
-      width=3.0cm
-    ]{ShieldEmory_hz_280_pres2023.png}%
-  }%
-}{}
 
 \setbeamercolor{title}{
   fg=emoryblue,
@@ -101,10 +89,60 @@
 \setbeamertemplate{title separator}{%
   \par
   \kern0.55em
-  {\color{emorygold}\rule{1.55cm}{1.8pt}}
+  {\color{emorygold}\rule{2.2cm}{1.2pt}}
   \par
   \kern0.55em
 }
+
+% Reserve a dedicated column for the logo so that long titles cannot
+% overlap it.
+\makeatletter
+\setbeamertemplate{title page}{%
+  % Filling the frame height prevents Beamer's default vertical centering
+  % from pushing this composition back toward the middle of the slide.
+  \vbox to 0.88\textheight{%
+    \vspace*{0.45cm}
+    \begin{columns}[T,onlytextwidth]
+      \begin{column}{0.72\textwidth}
+        \vbox to 0.80\textheight{%
+          \vspace*{0.55cm}
+          \ifx\inserttitle\@empty\else
+            {\usebeamerfont{title}\usebeamercolor[fg]{title}\inserttitle\par}
+            \usebeamertemplate*{title separator}
+          \fi
+          \ifx\insertsubtitle\@empty\else
+            {\usebeamerfont{subtitle}\usebeamercolor[fg]{subtitle}%
+             \linespread{1.05}\selectfont\insertsubtitle\par}
+          \fi
+          \vfill
+          \ifx\insertauthor\@empty\else
+            {\usebeamerfont{author}\usebeamercolor[fg]{author}\insertauthor\par}
+          \fi
+          \ifx\insertdate\@empty\else
+            \vspace{0pt}
+            {\usebeamerfont{date}\usebeamercolor[fg]{date}\insertdate\par}
+          \fi
+          \ifx\insertinstitute\@empty\else
+            \vspace{0.27cm}
+            {\usebeamerfont{institute}\usebeamercolor[fg]{institute}\insertinstitute\par}
+          \fi
+          % Balance the flexible gap above the presenter details against
+          % a modest lower margin; this keeps neither area oversized.
+          \vspace{0.30cm}
+        }
+      \end{column}
+      \begin{column}{0.24\textwidth}
+        \vspace*{0.55cm}
+        \raggedleft
+        \IfFileExists{ShieldEmory_hz_280_pres2023.png}{%
+          \includegraphics[width=\linewidth]{ShieldEmory_hz_280_pres2023.png}%
+        }{}
+      \end{column}
+    \end{columns}
+    \vfill
+  }
+}
+\makeatother
 
 % ---------- Compact full-width frame title bar ----------
 \setbeamercolor{frametitle}{
@@ -116,13 +154,12 @@
   \nointerlineskip
   \begin{beamercolorbox}[
     wd=\paperwidth,
-    ht=0.72cm,
-    dp=0.23cm,
-    leftskip=0.60cm,
-    rightskip=0.45cm
+    sep=0.20cm,
+    leftskip=0.15cm,
+    rightskip=0.15cm
   ]{frametitle}
     \usebeamerfont{frametitle}
-    \insertframetitle
+    \strut\insertframetitle\strut
   \end{beamercolorbox}
 }
 
@@ -133,37 +170,24 @@
 }
 
 \setbeamertemplate{section page}{%
-  \begin{centering}
-    \begin{beamercolorbox}[
-      wd=\paperwidth,
-      ht=\paperheight,
-      center
-    ]{section page}
-      \vspace*{0.29\paperheight}
-
-      {
-        \usebeamerfont{section title}
-        \insertsection
-        \par
-      }
-
-      \vspace{0.45cm}
-
-      {
-        \color{emorygold}
-        \rule{2.1cm}{2.2pt}
-      }
-    \end{beamercolorbox}
-  \end{centering}
+  \centering
+  {\usebeamerfont{section title}\usebeamercolor[fg]{section page}%
+   \insertsection\par}
+  \vspace{0.22cm}
+  {\color{emorygold}\rule{2.2cm}{0.8pt}\par}
 }
 
 \AtBeginSection[]{%
-  \begin{frame}[
-    plain,
-    noframenumbering
-  ]
-    \sectionpage
-  \end{frame}
+  \begingroup
+    \setbeamercolor{background canvas}{bg=emoryblue}
+    \begin{frame}[
+      plain,
+      noframenumbering,
+      c
+    ]
+      \sectionpage
+    \end{frame}
+  \endgroup
 }
 
 % ---------- Lists ----------
@@ -187,7 +211,18 @@
 }
 
 % ---------- Blocks ----------
-\setbeamertemplate{blocks}[rounded][shadow=false]
+% Use Beamer's native rounded shadow so the complete lower and right
+% perimeter is covered. Reduce opacity at the shadow-fill stage; changing
+% beamer@safeblack would also recolor Beamer's clipping mask.
+\makeatletter
+\patchcmd{\endbeamerboxesrounded}
+  {\pgfsetfillcolor{beamer@safeblack}}
+  {\pgfsetfillcolor{beamer@safeblack}%
+   \pgfsetfillopacity{0.24}}
+  {}
+  {\PackageWarning{emory-theme}{Could not reduce block shadow opacity}}
+\makeatother
+\setbeamertemplate{blocks}[rounded][shadow=true]
 
 % Standard block: blue heading, pale blue body
 \setbeamercolor{block title}{
@@ -254,6 +289,12 @@
   \definecolor{shadecolor}{HTML}{F2F5F8}
 }
 
+% Number standard figure captions and keep them visually secondary.
+\setbeamertemplate{caption}[numbered]
+\setbeamerfont{caption}{size=\small}
+\setbeamercolor{caption name}{fg=secondarygray}
+\setbeamercolor{caption}{fg=secondarygray}
+
 % ---------- Semantic emphasis commands ----------
 % Proposed method or other primary concept
 \newcommand{\method}[1]{%
@@ -262,7 +303,7 @@
 
 % Focal element; safe inside equations
 \newcommand{\focus}[1]{%
-  \textcolor{emorygold}{#1}%
+  \textcolor{emorygolddark}{#1}%
 }
 
 % Secondary explanation
