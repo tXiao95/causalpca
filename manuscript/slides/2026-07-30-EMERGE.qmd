@@ -31,10 +31,10 @@ format:
 
 # Why CSDR?
 
-## What do we want to learn from a mixture?
+## What do we want to learn from an environmental mixture?
 
 ::: {.columns}
-::: {.column width="52%"}
+::: {.column width="45%"}
 ### Scientific goals
 
 - Estimate the **joint health effect**
@@ -45,10 +45,10 @@ format:
 \vspace{0.03cm}
 :::
 
-::: {.column width="44%"}
+::: {.column width="45%"}
 ### The recurring problem {.alert}
 
-Many correlated exposures and confounding---all at once.
+Highly correlated exposures, sparse support, and confounding---all at once.
 
 $$
 (X_1,\ldots,X_p)\longrightarrow Y
@@ -56,7 +56,11 @@ $$
 :::
 :::
 
-\muted{Different methods prioritize different scientific questions.}
+\vspace{0.4cm}
+
+\begin{center}
+\muted{Different methods prioritize different scientific goals.}
+\end{center}
 
 <!-- SPEAKER NOTES:
 Environmental mixtures are difficult because we are asking several questions at once.
@@ -64,22 +68,22 @@ The point of this talk is not that one method replaces every other method; the e
 and scientific goal should determine the analysis.
 -->
 
-## Mixtures methods make different bargains
+## Mixtures methods make different tradeoffs
 
 \scriptsize
 
-| Approach | Dimension | What is learned? | Natural strength |
+| Method | Dimension | What is learned? | Natural strength |
 |:--|:--:|:--|:--|
-| qgcomp / WQS | $d=1$ | Prespecified joint shift | Simple overall effect |
-| PCP / PCA | $1<d<p$ | Exposure variation | Source/pattern discovery |
-| BKMR / BART | $d=p$ | Full multivariate response | Nonlinearity and interactions |
+| WQS / qgcomp | $d=1$ | Scalar joint shift | Interpretable effect |
+| PCA / PCP | $1<d<p$ | Exposure variation | Pattern discovery |
+| BKMR / BART | $d=p$ | Full exposure-response | Nonlinear interactions |
 | **CSDR** | **learn $d$** | **Causal response directions** | **Flexible causal summary** |
 
 \normalsize
 
 ### Key distinction {.alert}
 
-CSDR learns the structure in $X$ needed to preserve the **causal** mean response.
+CSDR learns the structure in exposure $X$ needed to preserve the **causal** exposure-response.
 
 <!-- SPEAKER NOTES:
 These methods answer different questions. qgcomp estimates a common quantile-shift
@@ -88,7 +92,9 @@ pattern discovery, including LOD and unusual-event structure, but it does not us
 Avoid saying that these methods are "not causal"; emphasize their different estimands.
 -->
 
-## Why not always estimate the full surface?
+## Why not always reduce to a scalar? 
+
+## Why not always estimate the full exposure-response?
 
 ::: {.columns}
 ::: {.column width="30%"}
@@ -132,7 +138,10 @@ space. Dimension reduction is not merely a visualization trick: it can improve t
 statistical problem that comes afterward.
 -->
 
-## CSDR searches for the intrinsic causal dimension
+## CSDR is similar to a causally supervised PCA
+
+::: {.column width="29%"}
+### Exposures
 
 $$
 \mu(x)=\mathbb{E}(Y^x)=g(\beta^\top x),
@@ -141,6 +150,7 @@ $$
 \qquad
 d\ll p.
 $$
+:::
 
 \vspace{0.20cm}
 
@@ -177,7 +187,7 @@ Replace $p$ exposures with $d$ summaries **without losing the causal mean respon
 <!-- SPEAKER NOTES:
 The response need not be linear. The linearity is in the reduction; g remains flexible.
 A single-index model is d=1 and a full response surface is d=p. CSDR learns where the
-problem lies between those extremes.
+problem lies between those extremes. The output (a loadings matrix) is the same as PCA. 
 -->
 
 ## Causal directions can differ from associational directions
@@ -339,13 +349,13 @@ performance depends on low-dimensional causal structure and sufficiently accurat
 nuisance estimation.
 -->
 
-## PFAS application: four exposures became one direction
+## PFAS application: four exposures summarized in one direction
 
 ::: {.columns}
 ::: {.column width="39%"}
 \small
 
-**Study:** 305 term births in the Atlanta African American Maternal-Child Cohort
+**Study:** 305 term births in the Atlanta African American Maternal-Child Cohort (ATL-AA)
 
 **Exposures:** PFOS, PFOA, PFNA, PFHxS
 
@@ -362,7 +372,7 @@ $$
 :::
 
 ::: {.column width="58%"}
-![](../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf){width="90%"}
+![PFAS exposure-response curve from ATL-AA](../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf){width="90%"}
 :::
 :::
 

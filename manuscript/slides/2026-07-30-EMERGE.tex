@@ -22,13 +22,13 @@
 }
 \setbeamertemplate{section page}{
   \centering
-  \begin{beamercolorbox}[sep=12pt,center]{section title}
+  \begin{beamercolorbox}[sep=12pt,center]{part title}
     \usebeamerfont{section title}\insertsection\par
   \end{beamercolorbox}
 }
 \setbeamertemplate{subsection page}{
   \centering
-  \begin{beamercolorbox}[sep=8pt,center]{subsection title}
+  \begin{beamercolorbox}[sep=8pt,center]{part title}
     \usebeamerfont{subsection title}\insertsubsection\par
   \end{beamercolorbox}
 }
@@ -102,7 +102,7 @@
 \newcommand{\CommentTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
 \newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
 \newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
-\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{\textbf{#1}}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
 \newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
 \newcommand{\DecValTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
 \newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
@@ -112,7 +112,7 @@
 \newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.28,0.35,0.67}{#1}}
 \newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.46,0.62}{#1}}
 \newcommand{\InformationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
-\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{\textbf{#1}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
 \newcommand{\NormalTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
 \newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
 \newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
@@ -135,17 +135,15 @@
 \makeatother
 \usepackage{graphicx}
 \makeatletter
-\newsavebox\pandoc@box
-\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
-  \sbox\pandoc@box{#1}%
-  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
-  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
-  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
-  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
-  \else\usebox{\pandoc@box}%
-  \fi%
-}
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
 % Set default figure placement to htbp
+\makeatletter
 \def\fps@figure{htbp}
 \makeatother
 
@@ -502,7 +500,9 @@
 \@ifpackageloaded{caption}{}{\usepackage{caption}}
 \@ifpackageloaded{subcaption}{}{\usepackage{subcaption}}
 \makeatother
-
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
 \usepackage{bookmark}
 
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
@@ -512,7 +512,6 @@
   pdfauthor={Thomas Hsiao, Ph.D.~},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
-
 
 \title{Causal sufficient dimension reduction for studying environmental
 mixtures}
@@ -527,13 +526,12 @@ Ph.D.~\newline \textcolor{secondarygray}{Postdoctoral Fellow}}
 \begin{document}
 \frame{\titlepage}
 
-
 \section{Why CSDR?}\label{why-csdr}
 
-\begin{frame}{What do we want to learn from a mixture?}
-\phantomsection\label{what-do-we-want-to-learn-from-a-mixture}
+\begin{frame}{What do we want to learn from an environmental mixture?}
+\phantomsection\label{what-do-we-want-to-learn-from-an-environmental-mixture}
 \begin{columns}[T]
-\begin{column}{0.52\linewidth}
+\begin{column}{0.45\textwidth}
 \begin{block}{Scientific goals}
 \phantomsection\label{scientific-goals}
 \begin{itemize}
@@ -552,10 +550,11 @@ Ph.D.~\newline \textcolor{secondarygray}{Postdoctoral Fellow}}
 \end{block}
 \end{column}
 
-\begin{column}{0.44\linewidth}
+\begin{column}{0.45\textwidth}
 \begin{alertblock}{The recurring problem}
 \phantomsection\label{the-recurring-problem}
-Many correlated exposures and confounding---all at once.
+Highly correlated exposures, sparse support, and confounding---all at
+once.
 
 \[
 (X_1,\ldots,X_p)\longrightarrow Y
@@ -564,21 +563,25 @@ Many correlated exposures and confounding---all at once.
 \end{column}
 \end{columns}
 
-\muted{Different methods prioritize different scientific questions.}
+\vspace{0.4cm}
+
+\begin{center}
+\muted{Different methods prioritize different scientific goals.}
+\end{center}
 \end{frame}
 
-\begin{frame}{Mixtures methods make different bargains}
-\phantomsection\label{mixtures-methods-make-different-bargains}
+\begin{frame}{Mixtures methods make different tradeoffs}
+\phantomsection\label{mixtures-methods-make-different-tradeoffs}
 \scriptsize
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2308}}
-  >{\centering\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.3077}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2308}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2308}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2308}}
+  >{\centering\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3077}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2308}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2308}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
-Approach
+Method
 \end{minipage} & \begin{minipage}[b]{\linewidth}\centering
 Dimension
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
@@ -588,10 +591,9 @@ Natural strength
 \end{minipage} \\
 \midrule\noalign{}
 \endhead
-qgcomp / WQS & \(d=1\) & Prespecified joint shift & Simple overall
-effect \\
-PCP / PCA & \(1<d<p\) & Exposure variation & Source/pattern discovery \\
-BKMR / BART & \(d=p\) & Full multivariate response & Nonlinearity and
+WQS / qgcomp & \(d=1\) & Scalar joint shift & Interpretable effect \\
+PCA / PCP & \(1<d<p\) & Exposure variation & Pattern discovery \\
+BKMR / BART & \(d=p\) & Full exposure-response & Nonlinear
 interactions \\
 \textbf{CSDR} & \textbf{learn \(d\)} & \textbf{Causal response
 directions} & \textbf{Flexible causal summary} \\
@@ -602,15 +604,19 @@ directions} & \textbf{Flexible causal summary} \\
 
 \begin{alertblock}{Key distinction}
 \phantomsection\label{key-distinction}
-CSDR learns the structure in \(X\) needed to preserve the
-\textbf{causal} mean response.
+CSDR learns the structure in exposure \(X\) needed to preserve the
+\textbf{causal} exposure-response.
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{Why not always estimate the full surface?}
-\phantomsection\label{why-not-always-estimate-the-full-surface}
+\begin{frame}{Why not always reduce to a scalar?}
+\phantomsection\label{why-not-always-reduce-to-a-scalar}
+\end{frame}
+
+\begin{frame}{Why not always estimate the full exposure-response?}
+\phantomsection\label{why-not-always-estimate-the-full-exposure-response}
 \begin{columns}[T]
-\begin{column}{0.3\linewidth}
+\begin{column}{0.3\textwidth}
 \begin{block}{One exposure}
 \phantomsection\label{one-exposure}
 Many observations support a curve.
@@ -621,7 +627,7 @@ Many observations support a curve.
 \end{block}
 \end{column}
 
-\begin{column}{0.3\linewidth}
+\begin{column}{0.3\textwidth}
 \begin{block}{Two exposures}
 \phantomsection\label{two-exposures}
 Observations thin across a surface.
@@ -632,7 +638,7 @@ Observations thin across a surface.
 \end{block}
 \end{column}
 
-\begin{column}{0.34\linewidth}
+\begin{column}{0.34\textwidth}
 \begin{block}{Many exposures}
 \phantomsection\label{many-exposures}
 Most joint exposure combinations are sparse.
@@ -651,8 +657,8 @@ response surface that is difficult to communicate.
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{CSDR searches for the intrinsic causal dimension}
-\phantomsection\label{csdr-searches-for-the-intrinsic-causal-dimension}
+\begin{frame}{CSDR is similar to a causally supervised PCA}
+\phantomsection\label{csdr-is-similar-to-a-causally-supervised-pca}
 \[
 \mu(x)=\mathbb{E}(Y^x)=g(\beta^\top x),
 \qquad
@@ -664,7 +670,7 @@ d\ll p.
 \vspace{0.20cm}
 
 \begin{columns}[T]
-\begin{column}{0.29\linewidth}
+\begin{column}{0.29\textwidth}
 \begin{block}{Exposures}
 \phantomsection\label{exposures}
 \[
@@ -673,7 +679,7 @@ X_1,\ X_2,\ \ldots,\ X_p
 \end{block}
 \end{column}
 
-\begin{column}{0.33\linewidth}
+\begin{column}{0.33\textwidth}
 \begin{block}{Causal summary}
 \phantomsection\label{causal-summary}
 \[
@@ -682,7 +688,7 @@ Z=\beta^\top X\in\mathbb{R}^d
 \end{block}
 \end{column}
 
-\begin{column}{0.32\linewidth}
+\begin{column}{0.32\textwidth}
 \begin{block}{Flexible response}
 \phantomsection\label{flexible-response}
 \[
@@ -703,7 +709,7 @@ causal mean response}.
 directions}
 \phantomsection\label{causal-directions-can-differ-from-associational-directions}
 \begin{columns}[T]
-\begin{column}{0.47\linewidth}
+\begin{column}{0.47\textwidth}
 \begin{block}{Observed regression}
 \phantomsection\label{observed-regression}
 \[
@@ -719,7 +725,7 @@ X\longleftarrow C\longrightarrow Y
 \end{block}
 \end{column}
 
-\begin{column}{0.47\linewidth}
+\begin{column}{0.47\textwidth}
 \begin{block}{Causal response}
 \phantomsection\label{causal-response}
 \[
@@ -748,7 +754,7 @@ causal-effect-preserving
 \begin{frame}{A modular two-stage strategy}
 \phantomsection\label{a-modular-two-stage-strategy}
 \begin{columns}[T]
-\begin{column}{0.31\linewidth}
+\begin{column}{0.31\textwidth}
 \begin{block}{1. Adjust}
 \phantomsection\label{adjust}
 Use \((Y,X,C)\) to construct a cross-fitted causal response
@@ -760,7 +766,7 @@ Use \((Y,X,C)\) to construct a cross-fitted causal response
 \end{block}
 \end{column}
 
-\begin{column}{0.31\linewidth}
+\begin{column}{0.31\textwidth}
 \begin{block}{2. Reduce}
 \phantomsection\label{reduce}
 Apply sufficient dimension reduction to \((\widetilde Y,X)\).
@@ -771,7 +777,7 @@ Apply sufficient dimension reduction to \((\widetilde Y,X)\).
 \end{block}
 \end{column}
 
-\begin{column}{0.31\linewidth}
+\begin{column}{0.31\textwidth}
 \begin{block}{3. Estimate}
 \phantomsection\label{estimate}
 Project exposures and estimate the causal response in \(d\) dimensions.
@@ -794,7 +800,7 @@ Project exposures and estimate the causal response in \(d\) dimensions.
 \begin{frame}{What does the researcher get?}
 \phantomsection\label{what-does-the-researcher-get}
 \begin{columns}[T]
-\begin{column}{0.3\linewidth}
+\begin{column}{0.3\textwidth}
 \begin{block}{Dimension}
 \phantomsection\label{dimension}
 \centering
@@ -807,7 +813,7 @@ How many causal directions are needed?
 \end{block}
 \end{column}
 
-\begin{column}{0.32\linewidth}
+\begin{column}{0.32\textwidth}
 \begin{block}{Importance}
 \phantomsection\label{importance}
 \centering
@@ -820,7 +826,7 @@ Which exposures contribute to the subspace?
 \end{block}
 \end{column}
 
-\begin{column}{0.32\linewidth}
+\begin{column}{0.32\textwidth}
 \begin{block}{Response}
 \phantomsection\label{response}
 \centering
@@ -856,7 +862,7 @@ P=\beta(\beta^\top\beta)^{-1}\beta^\top,
 
 \centering{
 
-\includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../../results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png}
+\includegraphics[width=0.6\textwidth,height=\textheight]{../../results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png}
 
 }
 
@@ -871,14 +877,15 @@ causal exposure--response surface}
 full \(X\) and noncausal reductions.
 \end{frame}
 
-\begin{frame}{PFAS application: four exposures became one direction}
-\phantomsection\label{pfas-application-four-exposures-became-one-direction}
+\begin{frame}{PFAS application: four exposures summarized in one
+direction}
+\phantomsection\label{pfas-application-four-exposures-summarized-in-one-direction}
 \begin{columns}[T]
-\begin{column}{0.39\linewidth}
+\begin{column}{0.39\textwidth}
 \small
 
 \textbf{Study:} 305 term births in the Atlanta African American
-Maternal-Child Cohort
+Maternal-Child Cohort (ATL-AA)
 
 \textbf{Exposures:} PFOS, PFOA, PFNA, PFHxS
 
@@ -894,8 +901,16 @@ Maternal-Child Cohort
 \textbf{SIS:} PFOS 0.60; PFOA 0.02; PFNA 0.07; PFHxS 0.31
 \end{column}
 
-\begin{column}{0.58\linewidth}
-\includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio]{../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf}
+\begin{column}{0.58\textwidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=0.9\textwidth,height=\textheight]{../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf}
+
+}
+
+\caption{PFAS exposure-response curve from ATL-AA}
+
+\end{figure}%
 \end{column}
 \end{columns}
 \end{frame}
@@ -905,8 +920,8 @@ Maternal-Child Cohort
 \small
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 If the scientific question is\ldots{}
@@ -940,7 +955,7 @@ workflow}{The csdr workflow}}\label{the-csdr-workflow}
 \begin{frame}[fragile]{Every analysis starts with three objects}
 \phantomsection\label{every-analysis-starts-with-three-objects}
 \begin{columns}[T]
-\begin{column}{0.6\linewidth}
+\begin{column}{0.6\textwidth}
 \scriptsize
 
 \begin{Shaded}
@@ -961,7 +976,7 @@ workflow}{The csdr workflow}}\label{the-csdr-workflow}
 \end{Shaded}
 \end{column}
 
-\begin{column}{0.36\linewidth}
+\begin{column}{0.36\textwidth}
 \begin{block}{Outcome}
 \phantomsection\label{outcome}
 \(Y\): health endpoint
@@ -988,7 +1003,7 @@ workflow}{The csdr workflow}}\label{the-csdr-workflow}
 \begin{frame}[fragile]{Fit the causal subspace}
 \phantomsection\label{fit-the-causal-subspace}
 \begin{columns}[T]
-\begin{column}{0.62\linewidth}
+\begin{column}{0.62\textwidth}
 \scriptsize
 
 \begin{Shaded}
@@ -1008,7 +1023,7 @@ workflow}{The csdr workflow}}\label{the-csdr-workflow}
 \end{Shaded}
 \end{column}
 
-\begin{column}{0.34\linewidth}
+\begin{column}{0.34\textwidth}
 \begin{block}{What happens}
 \phantomsection\label{what-happens}
 \begin{enumerate}
@@ -1034,7 +1049,7 @@ workflow}{The csdr workflow}}\label{the-csdr-workflow}
 \begin{frame}[fragile]{Inspect dimension and importance before effects}
 \phantomsection\label{inspect-dimension-and-importance-before-effects}
 \begin{columns}[T]
-\begin{column}{0.47\linewidth}
+\begin{column}{0.47\textwidth}
 \scriptsize
 
 \begin{Shaded}
@@ -1057,7 +1072,7 @@ workflow}{The csdr workflow}}\label{the-csdr-workflow}
 \textbf{PFAS SIS:} PFOS 0.60; PFOA 0.02; PFNA 0.07; PFHxS 0.31
 \end{column}
 
-\begin{column}{0.49\linewidth}
+\begin{column}{0.49\textwidth}
 \begin{alertblock}{Visual placeholder}
 \phantomsection\label{visual-placeholder}
 \centering
@@ -1078,7 +1093,7 @@ SIS dot plot with bootstrap intervals
 \begin{frame}[fragile]{Estimate the response in the reduced exposure}
 \phantomsection\label{estimate-the-response-in-the-reduced-exposure}
 \begin{columns}[T]
-\begin{column}{0.47\linewidth}
+\begin{column}{0.47\textwidth}
 \tiny
 
 \begin{Shaded}
@@ -1101,8 +1116,8 @@ SIS dot plot with bootstrap intervals
 \end{Shaded}
 \end{column}
 
-\begin{column}{0.5\linewidth}
-\includegraphics[width=0.86\linewidth,height=\textheight,keepaspectratio]{../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf}
+\begin{column}{0.5\textwidth}
+\includegraphics[width=0.86\textwidth,height=\textheight]{../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf}
 \end{column}
 \end{columns}
 
@@ -1116,7 +1131,7 @@ support.
 \begin{frame}[fragile]{A credible analysis includes diagnostics}
 \phantomsection\label{a-credible-analysis-includes-diagnostics}
 \begin{columns}[T]
-\begin{column}{0.45\linewidth}
+\begin{column}{0.45\textwidth}
 \begin{block}{Check}
 \phantomsection\label{check}
 \begin{itemize}
@@ -1135,7 +1150,7 @@ support.
 \end{block}
 \end{column}
 
-\begin{column}{0.51\linewidth}
+\begin{column}{0.51\textwidth}
 \tiny
 
 \begin{Shaded}
@@ -1166,7 +1181,7 @@ response curves.
 \begin{frame}[fragile]{When should I use CSDR?}
 \phantomsection\label{when-should-i-use-csdr}
 \begin{columns}[T]
-\begin{column}{0.55\linewidth}
+\begin{column}{0.55\textwidth}
 \begin{block}{Use CSDR when you want}
 \phantomsection\label{use-csdr-when-you-want}
 \begin{itemize}
@@ -1183,7 +1198,7 @@ response curves.
 \end{block}
 \end{column}
 
-\begin{column}{0.41\linewidth}
+\begin{column}{0.41\textwidth}
 \begin{block}{CSDR does not replace}
 \phantomsection\label{csdr-does-not-replace}
 \begin{itemize}
@@ -1294,9 +1309,9 @@ justify extrapolation or repair an inadequate adjustment set.
 \small
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Construction
@@ -1321,7 +1336,6 @@ additive-confounding structure \\
 
 \muted{Teach the DR workflow once; use RA as the clearest sensitivity analysis if time permits.}
 \end{frame}
-
 
 
 
