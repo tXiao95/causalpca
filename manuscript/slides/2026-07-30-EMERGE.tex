@@ -22,13 +22,13 @@
 }
 \setbeamertemplate{section page}{
   \centering
-  \begin{beamercolorbox}[sep=12pt,center]{part title}
+  \begin{beamercolorbox}[sep=12pt,center]{section title}
     \usebeamerfont{section title}\insertsection\par
   \end{beamercolorbox}
 }
 \setbeamertemplate{subsection page}{
   \centering
-  \begin{beamercolorbox}[sep=8pt,center]{part title}
+  \begin{beamercolorbox}[sep=8pt,center]{subsection title}
     \usebeamerfont{subsection title}\insertsubsection\par
   \end{beamercolorbox}
 }
@@ -102,7 +102,7 @@
 \newcommand{\CommentTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
 \newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
 \newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
-\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{\textbf{#1}}}
 \newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
 \newcommand{\DecValTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
 \newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
@@ -112,7 +112,7 @@
 \newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.28,0.35,0.67}{#1}}
 \newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.46,0.62}{#1}}
 \newcommand{\InformationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
-\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{\textbf{#1}}}
 \newcommand{\NormalTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
 \newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
 \newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
@@ -135,15 +135,17 @@
 \makeatother
 \usepackage{graphicx}
 \makeatletter
-\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
-\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
-\makeatother
-% Scale images if necessary, so that they will not overflow the page
-% margins by default, and it is still possible to overwrite the defaults
-% using explicit options in \includegraphics[width, height, ...]{}
-\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
 % Set default figure placement to htbp
-\makeatletter
 \def\fps@figure{htbp}
 \makeatother
 
@@ -407,11 +409,14 @@
 }
 
 % ---------- Footer ----------
-% Hides numbering on the title and section-divider slides.
-% Subtracts the title slide so the first content slide is 1/N.
+% Hides numbering on the title and section-divider slides. The main-deck
+% denominator stops at the recorded boundary; appendix frames use A1/A2.
+\newif\ifcsdrappendix
+\csdrappendixfalse
+\makeatletter
+\newcommand{\csdrrecordappendixboundary}{\beamer@appendixwrite}
 \setbeamertemplate{footline}{%
-  \leavevmode
-
+  \leavevmode%
   \ifnum\value{framenumber}>1
     \hbox{%
       \begin{beamercolorbox}[
@@ -421,13 +426,20 @@
         rightskip=0.55cm
       ]{page number in head/foot}
         \hfill
-        \the\numexpr\value{framenumber}-1\relax
-        \,/\,%
-        \the\numexpr\inserttotalframenumber-1\relax
+        \ifcsdrappendix
+          A\the\numexpr\value{framenumber}-\insertmainframenumber\relax
+          \,/\,%
+          A\the\numexpr\inserttotalframenumber-\insertmainframenumber\relax
+        \else
+          \the\numexpr\value{framenumber}-1\relax
+          \,/\,%
+          \the\numexpr\insertmainframenumber-1\relax
+        \fi
       \end{beamercolorbox}
     }
   \fi
 }
+\makeatother
 
 % ---------- Tables and code ----------
 \AtBeginEnvironment{tabular}{
@@ -443,6 +455,21 @@
 \setbeamerfont{caption}{size=\small}
 \setbeamercolor{caption name}{fg=secondarygray}
 \setbeamercolor{caption}{fg=secondarygray}
+\DeclareCaptionFont{pfasapplication}{%
+  \sffamily\fontsize{7.0}{8.4}\selectfont
+}
+
+% Compact target icon for the plain-language estimand callout.
+\newcommand{\targeticon}{%
+  \tikz[baseline=-0.50ex,scale=0.12]{%
+    \draw[emoryblue,line width=0.55pt] (0,0) circle (1);
+    \draw[emoryblue,line width=0.55pt] (0,0) circle (0.58);
+    \fill[emoryblue] (0,0) circle (0.17);
+  }%
+}
+
+% Shared type size for all workflow-slide code and console panels.
+\newcommand{\workflowcodefont}{\fontsize{6.3}{7.1}\selectfont}
 
 % ---------- Semantic emphasis commands ----------
 % Proposed method or other primary concept
@@ -500,9 +527,7 @@
 \@ifpackageloaded{caption}{}{\usepackage{caption}}
 \@ifpackageloaded{subcaption}{}{\usepackage{subcaption}}
 \makeatother
-\ifLuaTeX
-  \usepackage{selnolig}  % disable illegal ligatures
-\fi
+
 \usepackage{bookmark}
 
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
@@ -513,10 +538,11 @@
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
+
 \title{Causal sufficient dimension reduction for studying environmental
 mixtures}
-\subtitle{An applied introduction and tutorial for the
-\textup{\texttt{csdr}} R package}
+\subtitle{An applied introduction to CSDR and the \textup{\texttt{csdr}}
+R package}
 \author{Thomas Hsiao,
 Ph.D.~\newline \textcolor{secondarygray}{Postdoctoral Fellow}}
 \date{July 30, 2026}
@@ -526,12 +552,14 @@ Ph.D.~\newline \textcolor{secondarygray}{Postdoctoral Fellow}}
 \begin{document}
 \frame{\titlepage}
 
-\section{Why CSDR?}\label{why-csdr}
+
+\section{Why causal dimension
+reduction?}\label{why-causal-dimension-reduction}
 
 \begin{frame}{What do we want to learn from an environmental mixture?}
 \phantomsection\label{what-do-we-want-to-learn-from-an-environmental-mixture}
 \begin{columns}[T]
-\begin{column}{0.45\textwidth}
+\begin{column}{0.45\linewidth}
 \begin{block}{Scientific goals}
 \phantomsection\label{scientific-goals}
 \begin{itemize}
@@ -539,7 +567,7 @@ Ph.D.~\newline \textcolor{secondarygray}{Postdoctoral Fellow}}
 \item
   Estimate the \textbf{joint health effect}
 \item
-  Learn the \textbf{shape} of the response
+  Learn the \textbf{exposure-response curve}
 \item
   Identify \textbf{important contributors}
 \item
@@ -550,7 +578,9 @@ Ph.D.~\newline \textcolor{secondarygray}{Postdoctoral Fellow}}
 \end{block}
 \end{column}
 
-\begin{column}{0.45\textwidth}
+\begin{column}{0.45\linewidth}
+\pause
+
 \begin{alertblock}{The recurring problem}
 \phantomsection\label{the-recurring-problem}
 Highly correlated exposures, sparse support, and confounding---all at
@@ -565,6 +595,8 @@ once.
 
 \vspace{0.4cm}
 
+\pause
+
 \begin{center}
 \muted{Different methods prioritize different scientific goals.}
 \end{center}
@@ -572,537 +604,1724 @@ once.
 
 \begin{frame}{Mixtures methods make different tradeoffs}
 \phantomsection\label{mixtures-methods-make-different-tradeoffs}
+\begin{center}
 \scriptsize
-
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2308}}
-  >{\centering\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3077}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2308}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2308}}@{}}
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Method
-\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
-Dimension
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-What is learned?
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Natural strength
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-WQS / qgcomp & \(d=1\) & Scalar joint shift & Interpretable effect \\
-PCA / PCP & \(1<d<p\) & Exposure variation & Pattern discovery \\
-BKMR / BART & \(d=p\) & Full exposure-response & Nonlinear
-interactions \\
-\textbf{CSDR} & \textbf{learn \(d\)} & \textbf{Causal response
-directions} & \textbf{Flexible causal summary} \\
-\bottomrule\noalign{}
-\end{longtable}
+\renewcommand{\arraystretch}{1.35}
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{@{}l c l l@{}}
+\toprule
+\textbf{Method} & \textbf{Dimension} & \textbf{Description} & \textbf{Natural strength} \\
+\midrule
+WQS / qgcomp & $d=1$ & Scalar joint quantile shift & Interpretable effect \\
+PCA / PCP & $1\le d\le p$ & Unsupervised dimension reduction & Pattern discovery \\
+BKMR / BART & $d=p$ & Full exposure-response & Nonlinear interactions \\
+\textbf{CSDR} & \textbf{learn $1\le d\le p$} &
+\textbf{Supervised causal dimension reduction} & \textbf{Flexible causal summary} \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \normalsize
+
+\pause
 
 \begin{alertblock}{Key distinction}
 \phantomsection\label{key-distinction}
-CSDR learns the structure in exposure \(X\) needed to preserve the
-\textbf{causal} exposure-response.
+CSDR estimates a \textbf{supervised causal dimension reduction} of the
+exposure mixture \(X\) that preserves the \textbf{exposure-response
+curve}.
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{Why not always reduce to a scalar?}
-\phantomsection\label{why-not-always-reduce-to-a-scalar}
-\end{frame}
+\begin{frame}{The joint health effect is a causal inference problem}
+\phantomsection\label{the-joint-health-effect-is-a-causal-inference-problem}
+\vspace{-0.16cm}
 
-\begin{frame}{Why not always estimate the full exposure-response?}
-\phantomsection\label{why-not-always-estimate-the-full-exposure-response}
 \begin{columns}[T]
-\begin{column}{0.3\textwidth}
-\begin{block}{One exposure}
-\phantomsection\label{one-exposure}
-Many observations support a curve.
+\begin{column}{0.49\linewidth}
+\begin{block}{Outcome regression (common approach)}
+\begin{minipage}[t][4.85cm][t]{\linewidth}
+\centering
+\begin{minipage}[c][1.05cm][c]{\linewidth}
+\centering
+\small
+\(\displaystyle \mathbb{E}(Y\mid X=x,C=c)=h(x)+\gamma^\top c\)
 
-\[
-\mu(x_1)
-\]
+\vspace{0.05cm}
+
+\scriptsize
+\textbf{\textcolor{emoryblue}{Flexible \(h(x)\), linear-additive \(\gamma^\top c\)}}
+\end{minipage}
+
+\vspace{-0.08cm}
+
+\begin{tikzpicture}[x=0.94cm,y=0.80cm]
+  \path[use as bounding box] (0,0) rectangle (6.40,4.80);
+
+  % Separate exposure nodes make the full X=(X1,...,Xp) vector explicit.
+  \node[draw=secondarygray,fill=softgold,circle,minimum size=0.68cm,
+        inner sep=1pt,font=\scriptsize] (c) at (0.60,2.75) {$C$};
+  \node[draw=secondarygray,fill=lightpanel,circle,minimum size=0.70cm,
+        inner sep=1pt,font=\scriptsize] (x1) at (2.55,4.00) {$X_1$};
+  \node[draw=secondarygray,fill=lightpanel,circle,minimum size=0.70cm,
+        inner sep=1pt,font=\scriptsize] (x2) at (2.55,3.00) {$X_2$};
+  \node[font=\small,text=secondarygray] at (2.55,2.26) {$\vdots$};
+  \node[draw=secondarygray,fill=lightpanel,circle,minimum size=0.70cm,
+        inner sep=1pt,font=\scriptsize] (xp) at (2.55,1.52) {$X_p$};
+  \node[draw=secondarygray,fill=white,circle,minimum size=0.68cm,
+        inner sep=1pt,font=\scriptsize] (y) at (5.75,2.75) {$Y$};
+
+  \draw[->,secondarygray,line width=0.78pt] (c) -- (x1);
+  \draw[->,secondarygray,line width=0.78pt] (c) -- (x2);
+  \draw[->,secondarygray,line width=0.78pt] (c) -- (xp);
+  \draw[->,secondarygray,line width=0.80pt]
+    (c.south) -- ++(0,-1.60) -| (y.south);
+  \draw[->,emoryblue,line width=1.05pt] (x1) -- (y);
+  \draw[->,emoryblue,line width=1.05pt] (x2) -- (y);
+  \draw[->,emoryblue,line width=1.05pt] (xp) -- (y);
+
+  \node[
+    draw=rulegray,
+    fill=lightpanel,
+    rounded corners=2pt,
+    inner xsep=0.12cm,
+    inner ysep=0.07cm,
+    font=\scriptsize,
+    text=secondarygray
+  ] at (3.20,0.20) {condition on \(C=c\)};
+\end{tikzpicture}
+\end{minipage}
 \end{block}
 \end{column}
 
-\begin{column}{0.3\textwidth}
-\begin{block}{Two exposures}
-\phantomsection\label{two-exposures}
-Observations thin across a surface.
+\begin{column}{0.49\linewidth}
+\pause
 
-\[
-\mu(x_1,x_2)
-\]
-\end{block}
-\end{column}
+\begin{block}{Exposure-response curve (CSDR)}
+\begin{minipage}[t][4.85cm][t]{\linewidth}
+\centering
+\begin{minipage}[c][1.05cm][c]{\linewidth}
+\centering
+\small
+\(\displaystyle
+\mu(x)=\mathbb{E}(Y^x)
+=\mathbb{E}_C\!\left[\mathbb{E}\{Y\mid X=x,C\}\right]\)
 
-\begin{column}{0.34\textwidth}
-\begin{block}{Many exposures}
-\phantomsection\label{many-exposures}
-Most joint exposure combinations are sparse.
+\vspace{0.05cm}
 
-\[
-\mu(x_1,\ldots,x_p)
-\]
+\scriptsize
+\textbf{\textcolor{emorygolddark}{Flexible in \((X,C)\), no linear-additive restriction on \(C\)}}
+\end{minipage}
+
+\vspace{-0.08cm}
+
+\begin{tikzpicture}[x=0.94cm,y=0.80cm]
+  \path[use as bounding box] (0,0) rectangle (6.40,4.80);
+
+  % Matched intervention DAG with separate exposure nodes.
+  \node[draw=secondarygray,fill=softgold,circle,minimum size=0.68cm,
+        inner sep=1pt,font=\scriptsize] (c) at (0.40,2.75) {$C$};
+  \node[draw=emorygold,fill=softgold,circle,minimum size=0.70cm,
+        inner sep=1pt,font=\scriptsize] (x1) at (2.10,4.00) {$X_1$};
+  \node[draw=emorygold,fill=softgold,circle,minimum size=0.70cm,
+        inner sep=1pt,font=\scriptsize] (x2) at (2.10,3.00) {$X_2$};
+  \node[font=\small,text=secondarygray] at (2.10,2.26) {$\vdots$};
+  \node[draw=emorygold,fill=softgold,circle,minimum size=0.70cm,
+        inner sep=1pt,font=\scriptsize] (xp) at (2.10,1.52) {$X_p$};
+  \node[
+    draw=emorygold,
+    dashed,
+    fill=softgold,
+    rounded corners=3pt,
+    minimum width=1.55cm,
+    minimum height=0.72cm,
+    align=center,
+    font=\scriptsize
+  ] (z) at (4.35,2.75)
+    {\(Z=\beta^\top X\)\\[-0.03cm]\(\in\mathbb{R}^d\)};
+  \node[draw=secondarygray,fill=white,circle,minimum size=0.68cm,
+        inner sep=1pt,font=\scriptsize] (y) at (6.00,2.75) {$Y$};
+
+  % Each arrow entering X is shown and visibly cut by do(X=x).
+  \draw[->,secondarygray,dashed,line width=0.72pt] (c) -- (x1);
+  \draw[->,secondarygray,dashed,line width=0.72pt] (c) -- (x2);
+  \draw[->,secondarygray,dashed,line width=0.72pt] (c) -- (xp);
+  \node[font=\small,text=emorygolddark] at (1.25,3.38) {$\times$};
+  \node[font=\small,text=emorygolddark] at (1.25,2.92) {$\times$};
+  \node[font=\small,text=emorygolddark] at (1.25,2.14) {$\times$};
+
+  % C still predicts Y, but the causal response averages over C
+  \draw[->,secondarygray,line width=0.80pt]
+    (c.south) -- ++(0,-1.60) -| (y.south);
+
+  % X is summarized through a constructed, not biological, node Z
+  \draw[->,emorygold,line width=1.05pt] (x1) -- (z);
+  \draw[->,emorygold,line width=1.05pt] (x2) -- (z);
+  \draw[->,emorygold,line width=1.05pt] (xp) -- (z);
+  \draw[->,emorygold,line width=1.12pt] (z) -- (y);
+
+  \draw[emorygold,densely dotted,rounded corners=2pt,line width=0.70pt]
+    (1.62,1.08) rectangle (2.58,4.42);
+  \node[font=\scriptsize,text=emorygolddark] at (2.10,4.62) {set \(X=x\)};
+  \node[font=\tiny,text=secondarygray] at (4.70,1.88)
+    {constructed summary};
+  \node[
+    draw=rulegray,
+    fill=lightpanel,
+    rounded corners=2pt,
+    inner xsep=0.12cm,
+    inner ysep=0.07cm,
+    font=\scriptsize,
+    text=secondarygray
+  ] at (3.35,0.20) {average over \(C\)};
+\end{tikzpicture}
+\end{minipage}
 \end{block}
 \end{column}
 \end{columns}
 
-\begin{alertblock}{Consequence}
-\phantomsection\label{consequence}
-More dimensions mean harder nuisance estimation, weaker support, and a
-response surface that is difficult to communicate.
-\end{alertblock}
+\vspace{0.08cm}
+
+\pause
+
+\begin{center}
+\small
+\textbf{\textcolor{emorygolddark}{%
+The exposure-response curve \(\mu(x)\) is what we truly care about---not
+\(\mathbb{E}(Y\mid X,C)\).}}
+\end{center}
 \end{frame}
 
-\begin{frame}{CSDR is similar to a causally supervised PCA}
-\phantomsection\label{csdr-is-similar-to-a-causally-supervised-pca}
-\[
-\mu(x)=\mathbb{E}(Y^x)=g(\beta^\top x),
-\qquad
-\beta\in\mathbb{R}^{p\times d},
-\qquad
-d\ll p.
-\]
+\begin{frame}{Dimension reduction makes mixtures estimable and
+interpretable}
+\phantomsection\label{dimension-reduction-makes-mixtures-estimable-and-interpretable}
+\vspace{-0.05cm}
 
-\vspace{0.20cm}
+\begin{center}
+\begin{tikzpicture}[x=0.96cm,y=0.90cm]
+  \path[use as bounding box] (0,-0.90) rectangle (15.20,5.90);
 
-\begin{columns}[T]
-\begin{column}{0.29\textwidth}
-\begin{block}{Exposures}
-\phantomsection\label{exposures}
-\[
-X_1,\ X_2,\ \ldots,\ X_p
-\]
+  % ---------------------------------------------------------------------------
+  % Single score
+  % ---------------------------------------------------------------------------
+  \only<2->{
+  \filldraw[
+    fill=lightpanel!48!white,
+    draw=rulegray,
+    line width=0.60pt,
+    rounded corners=4pt
+  ] (0.08,1.42) rectangle (4.60,5.86);
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (2.34,5.52) {Single score};
+  \node[
+    draw=secondarygray,
+    fill=white,
+    rounded corners=2pt,
+    inner xsep=5pt,
+    inner ysep=3.5pt,
+    font=\scriptsize
+  ] at (2.34,4.84) {\(d=1\)};
+
+  % A literal one-dimensional score: one pattern remains separated while the
+  % four blue observations map to the same score.
+  \draw[<->,secondarygray,line width=0.75pt]
+    (0.92,3.35) -- (3.70,3.35);
+  \foreach \x in {1.25,1.67,2.83,3.27}
+    \fill[emorygolddark!78!white] (\x,3.35) circle (0.060);
+  \fill[emoryblue!72!white] (2.25,3.35) circle (0.095);
+  \node[font=\tiny,text=emoryblue] at (2.25,3.70) {\(\times 4\)};
+  \node[font=\tiny,text=emoryblue] at (2.25,3.04) {same score};
+  \node[font=\tiny,text=secondarygray,anchor=west]
+    at (3.23,3.64) {\(Z=Z_1\)};
+  \node[
+    font=\scriptsize,
+    text=textcharcoal,
+    text width=3.65cm,
+    align=center
+  ] at (2.34,2.01)
+    {A single score collapses one response pattern.};
+  }
+
+  % ---------------------------------------------------------------------------
+  % Learned intermediate dimension
+  % ---------------------------------------------------------------------------
+  \only<3->{
+  \filldraw[
+    fill=softgold,
+    draw=emorygold,
+    line width=0.90pt,
+    rounded corners=4pt
+  ] (4.83,1.42) rectangle (10.37,5.86);
+  \node[font=\sffamily\bfseries\normalsize,text=emorygolddark]
+    at (7.60,5.52) {Dimension reduction};
+  \node[
+    draw=emorygold,
+    fill=white,
+    rounded corners=2pt,
+    inner xsep=5pt,
+    inner ysep=3.5pt,
+    font=\scriptsize
+  ] at (7.60,4.84) {\(1\le d\le p\)};
+
+  % In learned coordinates, the two response-relevant directions become axes.
+  \draw[<->,secondarygray,line width=0.72pt]
+    (6.25,3.35) -- (8.65,3.35);
+  \draw[<->,secondarygray,line width=0.72pt]
+    (7.42,2.52) -- (7.42,4.25);
+  \foreach \x in {6.55,7.03,7.82,8.30}
+    \fill[emorygolddark!78!white] (\x,3.35) circle (0.060);
+  \foreach \y in {2.76,3.06,3.69,4.00}
+    \fill[emoryblue!72!white] (7.42,\y) circle (0.060);
+  \node[font=\tiny,text=emorygolddark,anchor=west]
+    at (7.92,3.08) {\(Z_1=\beta_1^\top X\)};
+  \node[font=\tiny,text=emoryblue,anchor=east]
+    at (7.27,4.25) {\(Z_2=\beta_2^\top X\)};
+
+  \node[
+    font=\scriptsize,
+    text=textcharcoal,
+    text width=4.35cm,
+    align=center
+  ] at (7.60,1.96)
+    {\textbf{Two directions retain both patterns} with denser support.};
+  }
+
+  % ---------------------------------------------------------------------------
+  % Full mixture
+  % ---------------------------------------------------------------------------
+  \filldraw[
+    fill=lightpanel!48!white,
+    draw=rulegray,
+    line width=0.60pt,
+    rounded corners=4pt
+  ] (10.60,1.42) rectangle (15.12,5.86);
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (12.86,5.52) {Full mixture};
+  \node[
+    draw=secondarygray,
+    fill=white,
+    rounded corners=2pt,
+    inner xsep=5pt,
+    inner ysep=3.5pt,
+    font=\scriptsize
+  ] at (12.86,4.84) {\(d=p\)};
+
+  % The same eight observations occupy a genuinely three-dimensional space.
+  \draw[secondarygray,line width=0.55pt]
+    (11.92,2.45) rectangle (13.32,3.95);
+  \draw[secondarygray,line width=0.55pt]
+    (12.35,2.82) rectangle (13.75,4.32);
+  \draw[secondarygray,line width=0.55pt]
+    (11.92,2.45) -- (12.35,2.82)
+    (13.32,2.45) -- (13.75,2.82)
+    (13.32,3.95) -- (13.75,4.32)
+    (11.92,3.95) -- (12.35,4.32);
+
+  % Varying depth places the points throughout the cube rather than on a plane.
+  \foreach \x/\y in {
+    12.17/2.71,12.71/3.23,13.02/3.60,13.52/4.08
+  } \fill[emorygolddark!78!white] (\x,\y) circle (0.055);
+  \foreach \x/\y in {
+    12.41/3.97,12.45/3.54,13.26/3.26,13.30/2.84
+  } \fill[emoryblue!72!white] (\x,\y) circle (0.055);
+  \node[font=\tiny,text=secondarygray,anchor=west] at (13.52,2.54)
+    {\(X_1\)};
+  \node[font=\tiny,text=secondarygray,anchor=east] at (11.85,4.02)
+    {\(X_2\)};
+  \node[font=\tiny,text=secondarygray,anchor=west] at (13.78,4.34)
+    {\(X_3\)};
+  \node[
+    font=\scriptsize,
+    text=textcharcoal,
+    text width=3.70cm,
+    align=center
+  ] at (12.86,1.99)
+    {The eight points are sparse in 3D.};
+
+  % ---------------------------------------------------------------------------
+  % Applied benefits
+  % ---------------------------------------------------------------------------
+  \only<4->{
+  \filldraw[
+    fill=lightpanel!62!white,
+    draw=rulegray,
+    line width=0.55pt,
+    rounded corners=3pt
+  ] (0.08,-0.08) rectangle (15.12,1.20);
+  \node[
+    font=\sffamily\bfseries\scriptsize,
+    text=emorygolddark
+  ] at (1.50,0.54) {WHY IT HELPS};
+
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue,anchor=base]
+    at (4.05,0.82) {Multiple patterns};
+  \node[font=\tiny,text=secondarygray,align=center,anchor=north]
+    at (4.05,0.72) {\shortstack{more flexible than a\\single mixture score}};
+
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue,anchor=base]
+    at (7.21,0.82) {Denser support};
+  \node[font=\tiny,text=secondarygray,align=center,anchor=north]
+    at (7.21,0.72) {\shortstack{more nearby observations;\\greater statistical power}};
+
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue,anchor=base]
+    at (10.37,0.82) {Easier estimation};
+  \node[font=\tiny,text=secondarygray,align=center,anchor=north]
+    at (10.37,0.72) {\shortstack{lower-dimensional nuisance\\and response models}};
+
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue,anchor=base]
+    at (13.53,0.82) {Clearer results};
+  \node[font=\tiny,text=secondarygray,align=center,anchor=north]
+    at (13.53,0.72) {\shortstack{easier to visualize\\and communicate}};
+  }
+
+  \visible<5->{
+  \node[
+    font=\sffamily\scriptsize,
+    text=secondarygray,
+    align=center
+  ] at (7.60,-0.64)
+    {Causal inference and dimension reduction are both important for
+     mixtures\ldots how does CSDR put them together?};
+  }
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+\begin{frame}{CSDR is causally supervised dimension reduction}
+\phantomsection\label{csdr-is-causally-supervised-dimension-reduction}
+\vspace{-0.14cm}
+
+\begin{center}
+\begin{minipage}{0.46\linewidth}
+\begin{block}{Main Assumption}
+\centering
+\small
+\(\displaystyle
+\mu(x)=\mathbb{E}(Y^x)=g(\beta^\top x)
+\)\par
+\end{block}
+\end{minipage}
+\end{center}
+
+\vspace{-0.30cm}
+
+\begin{center}
+\begin{tikzpicture}[x=0.92cm,y=1.20cm]
+  % Keep all stage titles and mathematical subtitles on shared baselines.
+  \def\stageheadingy{2.92}
+  \def\stagesubheadingy{2.57}
+
+  % Stage headings and subtitles
+  \uncover<2->{
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (1.35,\stageheadingy) {1. Exposures ($p$)};
+  \node[font=\scriptsize,text=secondarygray] at (1.35,\stagesubheadingy)
+    {$X\in\mathbb{R}^p$};
+  }
+  \uncover<3->{
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (5.45,\stageheadingy) {2. Causal directions};
+  \node[font=\scriptsize,text=secondarygray] at (5.45,\stagesubheadingy)
+    {$\beta\in\mathbb{R}^{p\times d}$};
+  }
+  \uncover<4->{
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (9.20,\stageheadingy) {3. Reduced ($d$)};
+  \node[font=\scriptsize,text=secondarygray] at (9.20,\stagesubheadingy)
+    {$Z=\beta^\top X\in\mathbb{R}^d$};
+  }
+  \uncover<5->{
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (13.35,\stageheadingy) {4. Flexible response};
+  \node[font=\scriptsize,text=secondarygray] at (13.35,\stagesubheadingy)
+    {$\mu(x)=\mu_\beta(z)=g(z)$};
+  }
+
+  % 1. Exposure bars. A single color denotes a common object type;
+  % no artificial ordering or exposure-level differences are implied.
+  \uncover<2->{
+  \fill[emoryblue!78!white] (0.03,0.64) rectangle ++(0.30,1.20);
+  \fill[emoryblue!78!white] (0.67,0.64) rectangle ++(0.30,1.20);
+  \fill[emoryblue!78!white] (1.31,0.64) rectangle ++(0.30,1.20);
+  \fill[emoryblue!78!white] (2.43,0.64) rectangle ++(0.30,1.20);
+  \node[font=\scriptsize,text=secondarygray] at (2.02,1.22) {$\cdots$};
+  \node[font=\scriptsize] at (0.18,2.05) {$X_1$};
+  \node[font=\scriptsize] at (0.82,2.05) {$X_2$};
+  \node[font=\scriptsize] at (1.46,2.05) {$X_3$};
+  \node[font=\scriptsize] at (2.58,2.05) {$X_p$};
+  \draw[secondarygray,line width=0.45pt]
+    (0.02,0.50) -- (0.02,0.40) -- (2.74,0.40) -- (2.74,0.50);
+  \node[font=\tiny,text=secondarygray] at (1.38,0.14) {$p$ exposures};
+  }
+
+  % 2. Loading heatmap: columns are causal directions
+  \uncover<3->{
+  \begin{scope}[yshift=-0.14cm]
+  \node[font=\scriptsize] at (4.55,2.32) {$\beta_1$};
+  \node[font=\scriptsize] at (5.15,2.32) {$\beta_2$};
+  \node[font=\scriptsize] at (5.75,2.32) {$\cdots$};
+  \node[font=\scriptsize] at (6.35,2.32) {$\beta_d$};
+  \node[font=\scriptsize] at (3.90,1.965) {$X_1$};
+  \node[font=\scriptsize] at (3.90,1.555) {$X_2$};
+  \node[font=\scriptsize] at (3.90,1.145) {$X_3$};
+  \node[font=\scriptsize] at (3.90,0.735) {$\vdots$};
+  \node[font=\scriptsize] at (3.90,0.325) {$X_p$};
+
+  \fill[emoryblue!85!white] (4.25,1.76) rectangle ++(0.60,0.41);
+  \fill[emorygold!45!white] (4.85,1.76) rectangle ++(0.60,0.41);
+  \fill[lightpanel] (5.45,1.76) rectangle ++(0.60,0.41);
+  \fill[emoryblue!45!white] (6.05,1.76) rectangle ++(0.60,0.41);
+  \fill[emorygold!55!white] (4.25,1.35) rectangle ++(0.60,0.41);
+  \fill[emoryblue!20!white] (4.85,1.35) rectangle ++(0.60,0.41);
+  \fill[emoryblue!65!white] (5.45,1.35) rectangle ++(0.60,0.41);
+  \fill[emoryblue!90!white] (6.05,1.35) rectangle ++(0.60,0.41);
+  \fill[emoryblue!35!white] (4.25,0.94) rectangle ++(0.60,0.41);
+  \fill[emorygold!75!white] (4.85,0.94) rectangle ++(0.60,0.41);
+  \fill[emoryblue!25!white] (5.45,0.94) rectangle ++(0.60,0.41);
+  \fill[emorygold!35!white] (6.05,0.94) rectangle ++(0.60,0.41);
+  \fill[lightpanel] (4.25,0.53) rectangle ++(0.60,0.41);
+  \fill[emoryblue!55!white] (4.85,0.53) rectangle ++(0.60,0.41);
+  \fill[emorygold!60!white] (5.45,0.53) rectangle ++(0.60,0.41);
+  \fill[emoryblue!30!white] (6.05,0.53) rectangle ++(0.60,0.41);
+  \fill[emorygold!90!white] (4.25,0.12) rectangle ++(0.60,0.41);
+  \fill[emorygold!55!white] (4.85,0.12) rectangle ++(0.60,0.41);
+  \fill[emoryblue!75!white] (5.45,0.12) rectangle ++(0.60,0.41);
+  \fill[emoryblue!45!white] (6.05,0.12) rectangle ++(0.60,0.41);
+  \draw[secondarygray,line width=0.55pt,rounded corners=1pt]
+    (4.25,0.12) rectangle (6.65,2.17);
+  \foreach \x in {4.85,5.45,6.05}
+    \draw[white,line width=0.45pt] (\x,0.12) -- (\x,2.17);
+  \foreach \y in {0.53,0.94,1.35,1.76}
+    \draw[white,line width=0.45pt] (4.25,\y) -- (6.65,\y);
+  \node[font=\tiny,text=secondarygray] at (5.45,-0.02)
+    {$p\times d$ loadings matrix};
+  \end{scope}
+  }
+
+  % 3. Reduced causal scores
+  \uncover<4->{
+  \node[
+    draw=emorygold,
+    fill=softgold,
+    rounded corners=2pt,
+    inner xsep=0.13cm,
+    inner ysep=0.08cm,
+    font=\scriptsize
+  ] at (9.20,1.76) {$Z_1=\beta_1^\top X$};
+  \node[font=\scriptsize,text=secondarygray] at (9.20,1.25) {$\vdots$};
+  \node[
+    draw=emorygold,
+    fill=softgold,
+    rounded corners=2pt,
+    inner xsep=0.13cm,
+    inner ysep=0.08cm,
+    font=\scriptsize
+  ] at (9.20,0.75) {$Z_d=\beta_d^\top X$};
+  \draw[secondarygray,line width=0.45pt]
+    (8.31,0.42) -- (8.31,0.32) -- (10.09,0.32) -- (10.09,0.42);
+  \node[font=\tiny,text=secondarygray] at (9.20,0.10) {$d\ll p$ summaries};
+  }
+
+  % 4. Flexible response curve
+  \uncover<5->{
+  \draw[->,textcharcoal,line width=0.70pt] (12.05,0.54) -- (14.70,0.54);
+  \draw[->,textcharcoal,line width=0.70pt] (12.05,0.54) -- (12.05,2.10);
+  \node[font=\tiny] at (14.80,0.48) {$z$};
+  \node[font=\tiny] at (11.90,2.17) {$\mu_\beta(z)$};
+  \fill[emoryblue!15!white]
+    (12.20,0.98)
+    .. controls (12.70,1.12) and (12.95,1.98) .. (13.48,1.86)
+    .. controls (13.89,1.76) and (14.05,1.02) .. (14.58,1.70)
+    -- (14.58,1.30)
+    .. controls (14.02,0.70) and (13.88,1.46) .. (13.48,1.58)
+    .. controls (12.95,1.72) and (12.70,0.80) .. (12.20,0.62)
+    -- cycle;
+  \draw[emoryblue,line width=1.10pt]
+    (12.20,0.80)
+    .. controls (12.70,0.95) and (12.95,1.86) .. (13.48,1.72)
+    .. controls (13.88,1.61) and (14.03,0.86) .. (14.58,1.50);
+  \node[font=\tiny,text=secondarygray] at (13.38,0.18) {shown for $d=1$};
+  }
+
+  % Flow arrows
+  \uncover<3->{
+  \draw[->,secondarygray,line width=0.90pt] (2.88,1.29) -- (3.43,1.29);
+  }
+  \uncover<4->{
+  \draw[->,secondarygray,line width=0.90pt] (6.85,1.29) -- (7.60,1.29);
+  }
+  \uncover<5->{
+  \draw[->,secondarygray,line width=0.90pt] (10.52,1.29) -- (11.48,1.29);
+  }
+\end{tikzpicture}
+\end{center}
+
+\vspace{-0.34cm}
+
+\uncover<6->{%
+\begin{alertblock}{\targeticon~Plain-language target}
+\small
+Replace \(p\) exposures with \(d\) summaries
+that \textbf{preserve the exposure-response curve
+\(\boldsymbol{\mu(x)}\).}
+\end{alertblock}
+}
+\end{frame}
+
+\begin{frame}{How CSDR estimates the reduced exposure}
+\phantomsection\label{how-csdr-estimates-the-reduced-exposure}
+\vspace{-0.13cm}
+
+\begin{center}
+\begin{tikzpicture}[
+  x=0.96cm,
+  y=1.18cm,
+  codepill/.style={
+    draw=rulegray,
+    fill=white,
+    rounded corners=1.5pt,
+    inner xsep=4pt,
+    inner ysep=2pt,
+    font=\ttfamily\tiny,
+    text=emoryblue
+  }
+]
+  \path[use as bounding box] (0,0) rectangle (15.20,5.58);
+
+  % csdr() orchestrates both estimation stages.
+  \uncover<1->{%
+  \node[codepill,font=\ttfamily\scriptsize] (csdrcall) at (7.60,5.32)
+    {fit <- csdr(Y = Y, A = X, C = C, ...)};
+  \draw[secondarygray,line width=0.50pt]
+    (csdrcall.south) -- (7.60,5.10);
+  \draw[secondarygray,line width=0.50pt]
+    (1.10,5.03) -- (1.10,5.10) -- (14.10,5.10) -- (14.10,5.03);
+  }
+
+  % ---------------------------------------------------------------------------
+  % Stage 1: causalize
+  % ---------------------------------------------------------------------------
+  \uncover<1->{%
+  \filldraw[
+    fill=lightpanel!58!white,
+    draw=emoryblue,
+    line width=0.65pt,
+    rounded corners=4pt
+  ] (0.05,1.40) rectangle (8.70,4.98);
+
+  \node[
+    circle,
+    fill=emoryblue,
+    text=white,
+    minimum size=0.46cm,
+    inner sep=0pt,
+    font=\sffamily\bfseries\scriptsize
+  ] at (0.54,4.49) {1};
+  \node[
+    anchor=west,
+    font=\sffamily\bfseries\small,
+    text=emoryblue
+  ] at (0.88,4.57) {CAUSAL ESTIMATION};
+  \node[anchor=west,font=\scriptsize,text=secondarygray]
+    at (0.88,4.23) {Construct \(\widetilde Y\) out of \((Y,X,C)\)};
+
+  % Observed data: separate Y, X, and C objects.
+  \node[font=\sffamily\bfseries\scriptsize,text=textcharcoal]
+    at (1.46,3.88) {Observed data};
+
+  \foreach \r in {0,...,4} {
+    \filldraw[fill=white,draw=rulegray,line width=0.30pt]
+      (0.38,{2.67+0.17*\r}) rectangle ++(0.28,0.17);
+  }
+  \foreach \r in {0,...,4} {
+    \foreach \c in {0,...,3} {
+      \pgfmathtruncatemacro{\shade}{18+9*mod(\r+\c,3)}
+      \filldraw[
+        fill=emoryblue!\shade!white,
+        draw=white,
+        line width=0.24pt
+      ] ({0.93+0.19*\c},{2.67+0.17*\r}) rectangle ++(0.19,0.17);
+    }
+  }
+  \foreach \r in {0,...,4} {
+    \foreach \c in {0,...,1} {
+      \pgfmathtruncatemacro{\shade}{12+7*mod(\r+\c,3)}
+      \filldraw[
+        fill=secondarygray!\shade!white,
+        draw=white,
+        line width=0.24pt
+      ] ({2.00+0.19*\c},{2.67+0.17*\r}) rectangle ++(0.19,0.17);
+    }
+  }
+  \node[font=\scriptsize] at (0.52,2.43) {$Y$};
+  \node[font=\scriptsize] at (1.31,2.43) {$X$};
+  \node[font=\scriptsize] at (2.19,2.43) {$C$};
+
+  \draw[->,secondarygray,line width=0.82pt]
+    (2.50,3.09) -- (2.82,3.09);
+
+  % Cross-fitting box: short labels remain fully contained.
+  \filldraw[
+    fill=white,
+    draw=emoryblue!58!white,
+    line width=0.72pt,
+    rounded corners=3pt
+  ] (2.91,2.14) rectangle (5.55,3.98);
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue]
+    at (4.23,3.67) {Cross-fit nuisances};
+
+  % Two nuisance models, written in terminology familiar to applied audiences.
+  \filldraw[
+    fill=lightpanel,
+    draw=rulegray,
+    line width=0.30pt,
+    rounded corners=1.5pt
+  ] (3.05,2.90) rectangle (5.41,3.39);
+  \node[font=\tiny,text=textcharcoal,align=center]
+    at (4.23,3.145)
+    {\shortstack{Outcome regression\\[-1.2pt]\(\mathbb{E}(Y\mid X,C)\)}};
+
+  \filldraw[
+    fill=lightpanel,
+    draw=rulegray,
+    line width=0.30pt,
+    rounded corners=1.5pt
+  ] (3.05,2.29) rectangle (5.41,2.78);
+  \node[font=\tiny,text=textcharcoal,align=center]
+    at (4.23,2.535)
+    {\shortstack{Propensity score\\[-1.2pt]\(f_{X\mid C}(x\mid c)\)}};
+
+  \draw[->,secondarygray,line width=0.82pt]
+    (5.59,3.09) -- (5.80,3.09);
+
+  % The pseudo-response is the stage-1 output and focal handoff.
+  \filldraw[
+    fill=softgold,
+    draw=emorygold,
+    line width=0.85pt,
+    rounded corners=4pt
+  ] (5.84,2.14) rectangle (8.51,3.98);
+  \node[font=\sffamily\bfseries\scriptsize,text=emorygolddark]
+    at (7.175,3.72) {Causal target};
+  \node[font=\huge,text=emorygolddark] at (7.175,3.25)
+    {$\widetilde Y$};
+  \filldraw[
+    fill=white,
+    draw=emorygold!55!white,
+    line width=0.35pt,
+    rounded corners=1.5pt
+  ] (6.12,2.30) rectangle (8.23,2.68);
+  \node[font=\tiny,text=textcharcoal] at (7.175,2.49)
+    {$\mathbb{E}(\widetilde Y\mid X)=\mu(X)$};
+
+  % Package inspection function aligned beneath the nuisance step.
+  \draw[secondarygray,densely dotted,line width=0.45pt]
+    (4.23,2.13) -- (4.23,1.95);
+  \node[font=\tiny,text=secondarygray] at (4.23,1.86)
+    {inspect fitted nuisances};
+  \node[codepill] at (4.23,1.61)
+    {nuisance\_fits(fit)};
+
+  \draw[emorygold,densely dotted,line width=0.45pt]
+    (7.175,2.13) -- (7.175,1.95);
+  \node[font=\tiny,text=secondarygray] at (7.175,1.86)
+    {inspect pseudo-responses};
+  \node[codepill] at (7.175,1.61)
+    {targets(fit)};
+  }
+
+  % ---------------------------------------------------------------------------
+  % Stage 2: reduce
+  % ---------------------------------------------------------------------------
+  \uncover<1->{%
+  \filldraw[
+    fill=white,
+    draw=emorygold!70!white,
+    line width=0.72pt,
+    rounded corners=4pt
+  ] (8.96,1.40) rectangle (15.15,4.98);
+
+  \node[
+    circle,
+    fill=emorygold,
+    text=textcharcoal,
+    minimum size=0.46cm,
+    inner sep=0pt,
+    font=\sffamily\bfseries\scriptsize
+  ] at (9.45,4.49) {2};
+  \node[
+    anchor=west,
+    font=\sffamily\bfseries\small,
+    text=emorygolddark
+  ] at (9.79,4.57) {REDUCTION};
+  \node[anchor=west,font=\scriptsize,text=secondarygray]
+    at (9.79,4.23) {Apply regular SDR to \((\widetilde Y,X)\)};
+
+  % Y-tilde vector and X matrix passed to SDR, matching the Y, X, C order above.
+  \node[font=\sffamily\bfseries\scriptsize,text=textcharcoal]
+    at (9.78,3.88) {SDR inputs};
+  \foreach \r in {0,...,4} {
+    \filldraw[
+      fill=emorygold!52!white,
+      draw=white,
+      line width=0.24pt
+    ] (9.20,{2.71+0.17*\r}) rectangle ++(0.25,0.17);
+    \foreach \c in {0,...,3} {
+      \pgfmathtruncatemacro{\shade}{18+9*mod(\r+\c,3)}
+      \filldraw[
+        fill=emoryblue!\shade!white,
+        draw=white,
+        line width=0.24pt
+      ] ({9.58+0.19*\c},{2.71+0.17*\r}) rectangle ++(0.19,0.17);
+    }
+  }
+  \node[font=\scriptsize,text=emorygolddark] at (9.325,2.48)
+    {$\widetilde Y$};
+  \node[font=\scriptsize] at (9.96,2.48) {$X$};
+
+  \draw[->,secondarygray,line width=0.82pt]
+    (10.39,3.12) -- (10.66,3.12);
+
+  % MAVE is the standard SDR engine.
+  \filldraw[
+    fill=lightpanel,
+    draw=emoryblue!58!white,
+    line width=0.72pt,
+    rounded corners=3pt
+  ] (10.73,2.13) rectangle (12.63,3.98);
+  \node[
+    font=\fontsize{7pt}{8pt}\selectfont\sffamily\bfseries,
+    text=emoryblue
+  ]
+    at (11.68,3.72) {Regular SDR};
+  \node[font=\sffamily\bfseries\large,text=emoryblue]
+    at (11.68,3.34) {MAVE};
+  \node[
+    font=\tiny,
+    text=secondarygray,
+    align=center
+  ] at (11.68,2.62)
+    {\shortstack{find directions\\of \(X\) preserving\\
+    \(\mathbb{E}(\widetilde Y\mid X)\)}};
+
+  \draw[emoryblue,densely dotted,line width=0.45pt]
+    (11.68,2.13) -- (11.68,1.95);
+  \node[font=\tiny,text=secondarygray] at (11.68,1.86)
+    {inspect MAVE fit};
+  \node[codepill,inner xsep=2.5pt] at (11.68,1.61)
+    {mave\_fits(fit)};
+
+  \draw[->,secondarygray,line width=0.82pt]
+    (12.70,3.12) -- (12.97,3.12);
+
+  % Fitted subspace and its standard extractors.
+  \filldraw[
+    fill=softgold,
+    draw=emorygold,
+    line width=0.78pt,
+    rounded corners=3pt
+  ] (13.04,2.13) rectangle (14.96,3.98);
+  \node[
+    font=\fontsize{7pt}{8pt}\selectfont\sffamily\bfseries,
+    text=emorygolddark
+  ]
+    at (14.00,3.72) {Fitted subspace};
+  \node[font=\Large,text=emorygolddark] at (14.00,3.31)
+    {$(\widehat\beta,\widehat d)$};
+  \node[codepill,inner ysep=1.5pt] at (14.00,2.72)
+    {summary(fit)};
+  \node[codepill,inner ysep=1.5pt] at (14.00,2.34)
+    {coef(fit)};
+  }
+
+  % ---------------------------------------------------------------------------
+  % Downstream use: visually distinct and intentionally unnumbered.
+  % ---------------------------------------------------------------------------
+  \uncover<2->{%
+  \filldraw[
+    fill=lightpanel!62!white,
+    draw=rulegray,
+    line width=0.55pt,
+    rounded corners=3pt
+  ] (0.05,0.05) rectangle (15.15,1.25);
+  \node[
+    anchor=west,
+    font=\sffamily\bfseries\scriptsize,
+    text=emorygolddark
+  ] at (0.42,0.88) {AFTER FITTING};
+  \node[font=\tiny,text=secondarygray]
+    at (1.74,0.43) {downstream analysis};
+
+  \node[font=\tiny,text=secondarygray] at (4.80,1.04)
+    {reduced exposure};
+  \node[font=\scriptsize,text=textcharcoal] at (4.80,0.67)
+    {$\widehat Z=\widehat\beta^\top X$};
+  \node[
+    codepill,
+    font=\ttfamily\tiny,
+    inner xsep=5pt,
+    inner ysep=2pt
+  ] at (4.80,0.30) {Z = scores(fit)};
+
+  \draw[->,secondarygray,line width=0.80pt]
+    (6.98,0.67) -- (7.64,0.67);
+
+  \node[font=\tiny,text=secondarygray] at (9.82,1.04)
+    {exposure-response curve};
+  \node[font=\scriptsize,text=textcharcoal] at (9.82,0.67)
+    {$\widehat\mu_{\widehat\beta}(z)$};
+  \node[
+    codepill,
+    font=\ttfamily\tiny,
+    inner xsep=5pt,
+    inner ysep=2pt
+  ] at (9.82,0.30)
+    {estimate\_ers(Y = Y, A = Z, C = C, ...)};
+  }
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+\begin{frame}{Subspace importance scores (SIS)}
+\phantomsection\label{subspace-importance-scores-sis}
+\vspace{-0.12cm}
+
+\begin{center}
+\begin{tikzpicture}[x=0.95cm,y=1.04cm]
+  \path[use as bounding box] (0,-1.25) rectangle (15.20,5.75);
+
+  % ---------------------------------------------------------------------------
+  % Motivation and general definition.
+  % ---------------------------------------------------------------------------
+  \visible<1->{
+  \filldraw[
+    fill=emoryblue!6!white,
+    draw=emoryblue,
+    line width=0.75pt,
+    rounded corners=4pt
+  ] (0.10,4.43) rectangle (7.52,5.72);
+  \node[
+    font=\sffamily\bfseries\tiny,
+    text=white,
+    fill=emoryblue,
+    rounded corners=2pt,
+    inner xsep=5pt,
+    inner ysep=1.5pt,
+    anchor=west
+  ] at (0.48,5.52) {PROBLEM};
+  \node[
+    font=\sffamily\bfseries\small,
+    text=textcharcoal,
+    anchor=west
+  ] at (0.48,5.14)
+    {Why not interpret \(\beta\) like PCA loadings?};
+  \node[font=\scriptsize,text=secondarygray,anchor=west] at (0.48,4.72)
+    {Not unique: \(\beta R\) spans the same subspace.};
+  }
+
+  \visible<4->{
+  \filldraw[
+    fill=softgold,
+    draw=emorygold,
+    line width=0.85pt,
+    rounded corners=4pt
+  ] (7.68,4.43) rectangle (15.10,5.72);
+  \node[
+    font=\sffamily\bfseries\tiny,
+    text=emoryblue,
+    fill=emorygold,
+    rounded corners=2pt,
+    inner xsep=5pt,
+    inner ysep=1.5pt,
+    anchor=west
+  ] at (8.05,5.52) {SOLUTION};
+  \node[
+    font=\sffamily\bfseries\small,
+    text=textcharcoal
+  ] at (11.40,5.14) {Use SIS to measure variable importance};
+  \node[font=\small,text=emorygolddark] at (11.40,4.72)
+    {\(\displaystyle
+      \lambda_j=
+      \left[\beta
+      (\beta^\top\beta)^{-1}
+      \beta^\top\right]_{jj}\)};
+  }
+
+  % ---------------------------------------------------------------------------
+  % Example 2: two bases for an equally represented subspace.
+  % ---------------------------------------------------------------------------
+  \visible<3->{
+  \filldraw[
+    fill=lightpanel!58!white,
+    draw=emoryblue,
+    line width=0.60pt,
+    rounded corners=4pt
+  ] (0.10,-0.24) rectangle (7.52,1.94);
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue]
+    at (3.81,1.72) {Example 2: equal representation};
+
+  \node[font=\sffamily\bfseries\tiny,text=emoryblue,
+        text width=2.30cm,align=center,inner sep=0pt]
+    at (1.50,1.38) {Basis \(\beta^{(A)}\)};
+  \node[font=\fontsize{7.5}{9}\selectfont,text=textcharcoal] at (1.50,0.58)
+    {\(\displaystyle
+      \left[\begin{array}{@{}c@{\;}r@{\quad}c@{\;}r@{}}
+       \phantom{-} & 0.71 & \phantom{-} & 0.41\\[3pt]
+       -           & 0.71 & \phantom{-} & 0.41\\[3pt]
+       \phantom{-} & 0.00 & -           & 0.82
+      \end{array}\right]\)};
+
+  \node[font=\sffamily\bfseries\tiny,text=emoryblue,
+        text width=2.30cm,align=center,inner sep=0pt]
+    at (6.12,1.38) {Basis \(\beta^{(B)}\)};
+  \node[font=\fontsize{7.5}{9}\selectfont,text=textcharcoal] at (6.12,0.58)
+    {\(\displaystyle
+      \left[\begin{array}{@{}c@{\;}r@{\quad}c@{\;}r@{}}
+       \phantom{-} & 0.79 & -           & 0.21\\[3pt]
+       -           & 0.21 & \phantom{-} & 0.79\\[3pt]
+       -           & 0.58 & -           & 0.58
+      \end{array}\right]\)};
+
+  \draw[<->,secondarygray,line width=0.75pt] (3.20,0.58) -- (4.42,0.58);
+  \node[font=\tiny,text=secondarygray] at (3.81,1.00)
+    {\(p=3,\ d=2\)};
+  }
+
+  \visible<6->{
+  \filldraw[
+    fill=softgold,
+    draw=emorygold,
+    line width=0.75pt,
+    rounded corners=4pt
+  ] (7.68,-0.24) rectangle (15.10,1.94);
+  \node[font=\sffamily\bfseries\scriptsize,text=emorygolddark]
+    at (11.42,1.72) {SIS: equal representation};
+  \foreach \y in {1.28,0.84,0.40} {
+    \draw[rulegray,line width=0.65pt] (9.45,\y) -- (14.45,\y);
+  }
+  \node[font=\scriptsize] at (8.93,1.28) {\(X_1\)};
+  \node[font=\scriptsize] at (8.93,0.84) {\(X_2\)};
+  \node[font=\scriptsize] at (8.93,0.40) {\(X_3\)};
+  \foreach \y in {1.28,0.84,0.40} {
+    \draw[emoryblue!58!white,line width=2.25pt] (9.45,\y) -- (12.79,\y);
+    \fill[emoryblue] (12.79,\y) circle (0.065);
+  }
+  \node[font=\tiny,text=secondarygray,anchor=west] at (12.97,1.28)
+    {\(\lambda_1=0.67\)};
+  \node[font=\tiny,text=secondarygray,anchor=west] at (12.97,0.84)
+    {\(\lambda_2=0.67\)};
+  \node[font=\tiny,text=secondarygray,anchor=west] at (12.97,0.40)
+    {\(\lambda_3=0.67\)};
+  \draw[secondarygray,line width=0.50pt] (9.45,0.09) -- (14.45,0.09);
+  \draw[secondarygray,line width=0.50pt] (9.45,0.02) -- (9.45,0.16);
+  \draw[secondarygray,line width=0.50pt] (14.45,0.02) -- (14.45,0.16);
+  \node[font=\tiny,text=secondarygray] at (9.45,-0.08) {\(0\)};
+  \node[font=\tiny,text=secondarygray] at (14.45,-0.08) {\(1\)};
+  }
+
+  % ---------------------------------------------------------------------------
+  % Example 1: two orthonormal bases for a subspace containing X1 exactly.
+  % ---------------------------------------------------------------------------
+  \visible<2->{
+  \filldraw[
+    fill=lightpanel!58!white,
+    draw=emoryblue,
+    line width=0.60pt,
+    rounded corners=4pt
+  ] (0.10,2.10) rectangle (7.52,4.28);
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue]
+    at (3.81,4.06) {Example 1: \(X_1\) fully represented};
+
+  \node[font=\sffamily\bfseries\tiny,text=emoryblue,
+        text width=2.30cm,align=center,inner sep=0pt]
+    at (1.50,3.72) {Basis \(\beta^{(A)}\)};
+  \node[font=\fontsize{7.5}{9}\selectfont,text=textcharcoal] at (1.50,2.92)
+    {\(\displaystyle
+      \left[\begin{array}{@{}c@{\;}r@{\quad}c@{\;}r@{}}
+       \phantom{-} & 1.00 & \phantom{-} & 0.00\\[3pt]
+       \phantom{-} & 0.00 & \phantom{-} & 0.71\\[3pt]
+       \phantom{-} & 0.00 & -           & 0.71
+      \end{array}\right]\)};
+
+  \node[font=\sffamily\bfseries\tiny,text=emoryblue,
+        text width=2.30cm,align=center,inner sep=0pt]
+    at (6.12,3.72) {Basis \(\beta^{(B)}\)};
+  \node[font=\fontsize{7.5}{9}\selectfont,text=textcharcoal] at (6.12,2.92)
+    {\(\displaystyle
+      \left[\begin{array}{@{}c@{\;}r@{\quad}c@{\;}r@{}}
+       \phantom{-} & 0.80 & -           & 0.60\\[3pt]
+       \phantom{-} & 0.42 & \phantom{-} & 0.57\\[3pt]
+       -           & 0.42 & -           & 0.57
+      \end{array}\right]\)};
+
+  \draw[<->,secondarygray,line width=0.75pt] (3.20,2.92) -- (4.42,2.92);
+  \node[font=\tiny,text=secondarygray] at (3.81,3.34)
+    {\(p=3,\ d=2\)};
+  }
+
+  \visible<5->{
+  \filldraw[
+    fill=softgold,
+    draw=emorygold,
+    line width=0.75pt,
+    rounded corners=4pt
+  ] (7.68,2.10) rectangle (15.10,4.28);
+  \node[font=\sffamily\bfseries\scriptsize,text=emorygolddark]
+    at (11.42,4.06) {SIS: \(X_1\) fully represented};
+  \foreach \y in {3.62,3.18,2.74} {
+    \draw[rulegray,line width=0.65pt] (9.45,\y) -- (14.45,\y);
+  }
+  \node[font=\scriptsize,text=emorygolddark] at (8.93,3.62) {\(X_1\)};
+  \node[font=\scriptsize] at (8.93,3.18) {\(X_2\)};
+  \node[font=\scriptsize] at (8.93,2.74) {\(X_3\)};
+  \draw[emorygold,line width=2.40pt] (9.45,3.62) -- (14.45,3.62);
+  \fill[emorygolddark] (14.45,3.62) circle (0.068);
+  \node[font=\tiny,text=emorygolddark,anchor=east] at (14.14,3.82)
+    {\(\lambda_1=1.00\)};
+  \foreach \y/\lab in {3.18/2,2.74/3} {
+    \draw[emoryblue!58!white,line width=2.25pt] (9.45,\y) -- (11.95,\y);
+    \fill[emoryblue] (11.95,\y) circle (0.065);
+    \node[font=\tiny,text=secondarygray,anchor=west] at (12.13,\y)
+      {\(\lambda_{\lab}=0.50\)};
+  }
+  \draw[secondarygray,line width=0.50pt] (9.45,2.43) -- (14.45,2.43);
+  \draw[secondarygray,line width=0.50pt] (9.45,2.36) -- (9.45,2.50);
+  \draw[secondarygray,line width=0.50pt] (14.45,2.36) -- (14.45,2.50);
+  \node[font=\tiny,text=secondarygray] at (9.45,2.25) {\(0\)};
+  \node[font=\tiny,text=secondarygray] at (14.45,2.25) {\(1\)};
+  }
+
+  % ---------------------------------------------------------------------------
+  % General p-dimensional interpretation and guardrails.
+  % ---------------------------------------------------------------------------
+  \visible<7->{
+  \filldraw[
+    fill=lightpanel!68!white,
+    draw=rulegray,
+    line width=0.55pt,
+    rounded corners=3pt
+  ] (0.10,-1.20) rectangle (15.10,-0.40);
+  \node[font=\sffamily\bfseries\scriptsize,text=emorygolddark]
+    at (1.975,-0.80) {SIS PROPERTIES};
+
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue]
+    at (5.725,-0.70) {\(0\le\lambda_j\le1\)};
+  \node[font=\tiny,text=secondarygray] at (5.725,-0.99)
+    {higher \(=\) more represented};
+
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue]
+    at (9.475,-0.70) {\(\sum_{j=1}^{p}\lambda_j=d\)};
+  \node[font=\tiny,text=secondarygray] at (9.475,-0.99)
+    {additive decomposition};
+
+  \node[font=\sffamily\bfseries\scriptsize,text=emoryblue]
+    at (13.225,-0.70) {Basis-invariant};
+  \node[font=\tiny,text=secondarygray] at (13.225,-0.99)
+    {stable to full-rank transforms of \(\beta\)};
+  }
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+\begin{frame}{What does the researcher learn?}
+\phantomsection\label{what-does-the-researcher-learn}
+\vspace{-0.06cm}
+
+{\centering
+\small\textcolor{secondarygray}{Back to our scientific goals\ldots}\par}
+
+\vspace{0.06cm}
+
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.485\textwidth}
+\begin{block}{1) Estimate the joint health effect}
+\begin{minipage}[t][1.78cm][t]{\linewidth}
+\centering
+\vspace*{0.08cm}
+\parbox[c][0.76cm][c]{\linewidth}{\centering\Large
+  \(\displaystyle
+    \widehat\Delta
+    =\widehat\mu\!\left(x^{\scriptscriptstyle\mathrm{high}}\right)
+    -\widehat\mu\!\left(x^{\scriptscriptstyle\mathrm{ref}}\right)
+  \)}
+\par
+\vspace{0.08cm}
+\parbox[c][0.64cm][c]{0.94\linewidth}{\centering\scriptsize
+  \textcolor{secondarygray}{Compare causal means under two mixture profiles.}}
+\end{minipage}
 \end{block}
 \end{column}
 
-\begin{column}{0.33\textwidth}
-\begin{block}{Causal summary}
-\phantomsection\label{causal-summary}
-\[
-Z=\beta^\top X\in\mathbb{R}^d
-\]
-\end{block}
-\end{column}
-
-\begin{column}{0.32\textwidth}
-\begin{block}{Flexible response}
-\phantomsection\label{flexible-response}
-\[
-\mu_\beta(z)=g(z)
-\]
+\begin{column}{0.485\textwidth}
+\begin{block}{2) Learn the exposure-response curve}
+\begin{minipage}[t][1.78cm][t]{\linewidth}
+\centering
+\vspace*{0.08cm}
+\parbox[c][0.76cm][c]{\linewidth}{\centering\Large
+  \(\displaystyle \widehat\mu_\beta(z)=\widehat g(z)\)}
+\par
+\vspace{0.08cm}
+\parbox[c][0.64cm][c]{0.94\linewidth}{\centering\scriptsize
+  \textcolor{secondarygray}{Fit the exposure-response curve across reduced \(Z\).}}
+\end{minipage}
 \end{block}
 \end{column}
 \end{columns}
 
-\begin{alertblock}{Plain-language target}
-\phantomsection\label{plain-language-target}
-Replace \(p\) exposures with \(d\) summaries \textbf{without losing the
-causal mean response}.
-\end{alertblock}
-\end{frame}
+\vspace{0.22cm}
 
-\begin{frame}{Causal directions can differ from associational
-directions}
-\phantomsection\label{causal-directions-can-differ-from-associational-directions}
-\begin{columns}[T]
-\begin{column}{0.47\textwidth}
-\begin{block}{Observed regression}
-\phantomsection\label{observed-regression}
-\[
-\mathbb{E}(Y\mid X=x)
-\]
-
-Confounding can create or obscure exposure directions associated with
-the outcome.
-
-\[
-X\longleftarrow C\longrightarrow Y
-\]
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.485\textwidth}
+\begin{block}{3) Identify important contributors}
+\begin{minipage}[t][1.78cm][t]{\linewidth}
+\centering
+\vspace*{0.08cm}
+\parbox[c][0.76cm][c]{\linewidth}{\centering\Large
+  \(\displaystyle \widehat\lambda_1,\ldots,\widehat\lambda_p\)}
+\par
+\vspace{0.08cm}
+\parbox[c][0.64cm][c]{0.94\linewidth}{\centering\scriptsize
+  \textcolor{secondarygray}{SIS measures how strongly each exposure is represented in the causal subspace.}}
+\end{minipage}
 \end{block}
 \end{column}
 
-\begin{column}{0.47\textwidth}
-\begin{block}{Causal response}
-\phantomsection\label{causal-response}
-\[
-\mathbb{E}(Y^x)
-\]
-
-CSDR seeks directions that preserve the response under interventions on
-\(X\).
-
-\[
-X\longrightarrow Y
-\]
+\begin{column}{0.485\textwidth}
+\begin{block}{4) Find a useful mixture summary}
+\begin{minipage}[t][1.78cm][t]{\linewidth}
+\centering
+\vspace*{0.08cm}
+\parbox[c][0.76cm][c]{\linewidth}{\centering\Large
+  \(\displaystyle
+    \widehat Z=\widehat\beta^\top X\in\mathbb{R}^{\widehat d}
+  \)}
+\par
+\vspace{0.08cm}
+\parbox[c][0.64cm][c]{0.94\linewidth}{\centering\scriptsize
+  \textcolor{secondarygray}{Replace \(p\) exposures with learned scores that preserve the exposure-response curve.}}
+\end{minipage}
 \end{block}
 \end{column}
 \end{columns}
-
-\begin{alertblock}{The distinction that matters}
-\phantomsection\label{the-distinction-that-matters}
-\centering
-
-\Large Association-preserving \(\boldsymbol{\neq}\)
-causal-effect-preserving
-\end{alertblock}
 \end{frame}
 
-\begin{frame}{A modular two-stage strategy}
-\phantomsection\label{a-modular-two-stage-strategy}
-\begin{columns}[T]
-\begin{column}{0.31\textwidth}
-\begin{block}{1. Adjust}
-\phantomsection\label{adjust}
-Use \((Y,X,C)\) to construct a cross-fitted causal response
-\(\widetilde Y\).
+\begin{frame}{Practical FAQ about CSDR}
+\phantomsection\label{practical-faq-about-csdr}
+\vspace{-0.12cm}
 
-\[
-\mathbb{E}(\widetilde Y\mid X)=\mu(X)
-\]
-\end{block}
-\end{column}
+\begin{center}
+\begin{tikzpicture}[x=0.95cm,y=0.92cm]
+  \path[use as bounding box] (0,0.05) rectangle (15.20,6.00);
 
-\begin{column}{0.31\textwidth}
-\begin{block}{2. Reduce}
-\phantomsection\label{reduce}
-Apply sufficient dimension reduction to \((\widetilde Y,X)\).
+  \foreach \y in {4.85,3.67,2.49,1.31,0.13} {
+    \pgfmathsetmacro{\ytop}{\y+1.08}
+    \pgfmathsetmacro{\ybarbottom}{\y+0.14}
+    \pgfmathsetmacro{\ybartop}{\y+0.94}
+    \filldraw[
+      fill=lightpanel!68!white,
+      draw=rulegray,
+      line width=0.55pt,
+      rounded corners=3pt
+    ] (0.10,\y) rectangle (15.10,\ytop);
+    \draw[emoryblue,line width=1.55pt]
+      (0.16,\ybarbottom) -- (0.16,\ybartop);
+    \draw[rulegray,line width=0.45pt]
+      (3.70,\ybarbottom) -- (3.70,\ybartop);
+  }
 
-\[
-(\widehat\beta,\widehat d)
-\]
-\end{block}
-\end{column}
+  % 1. Outcomes
+  \node[
+    anchor=west,
+    text width=2.95cm,
+    align=left,
+    font=\sffamily\bfseries\scriptsize,
+    text=emoryblue
+  ] at (0.48,5.39) {1) Which outcomes?};
+  \node[anchor=west,font=\sffamily\bfseries\scriptsize,text=textcharcoal]
+    at (4.08,5.63) {Binary, count, or continuous \(Y\)};
+  \node[
+    anchor=west,
+    text width=10.45cm,
+    align=left,
+    font=\fontsize{7}{8}\selectfont,
+    text=secondarygray
+  ] at (4.08,5.20) {Use outcome-appropriate nuisance learners.};
 
-\begin{column}{0.31\textwidth}
-\begin{block}{3. Estimate}
-\phantomsection\label{estimate}
-Project exposures and estimate the causal response in \(d\) dimensions.
+  % 2. Model flexibility
+  \node[
+    anchor=west,
+    text width=2.95cm,
+    align=left,
+    font=\sffamily\bfseries\scriptsize,
+    text=emoryblue
+  ] at (0.48,4.21) {2) What is linear?};
+  \node[anchor=west,font=\sffamily\bfseries\scriptsize,text=textcharcoal]
+    at (4.08,4.45) {Nuisances and \(g(\beta^\top x)\) are nonparametric};
+  \node[
+    anchor=west,
+    text width=10.45cm,
+    align=left,
+    font=\fontsize{7}{8}\selectfont,
+    text=secondarygray
+  ] at (4.08,4.02) {Only \(Z=\beta^\top X\) is linear. CSDR accommodates BART, XGBoost, neural network, etc.};
 
-\[
-\widehat Z=\widehat\beta^\top X
-\]
-\end{block}
-\end{column}
-\end{columns}
+  % 3. Interactions
+  \node[
+    anchor=west,
+    text width=2.95cm,
+    align=left,
+    font=\sffamily\bfseries\scriptsize,
+    text=emoryblue
+  ] at (0.48,3.03) {3) How are interactions studied?};
+  \node[anchor=west,font=\sffamily\bfseries\scriptsize,text=textcharcoal]
+    at (4.08,3.27) {Nonlinear \(g\) can encode interactions among \(X\)};
+  \node[
+    anchor=west,
+    text width=10.45cm,
+    align=left,
+    font=\fontsize{7}{8}\selectfont,
+    text=secondarygray
+  ] at (4.08,2.84) {For \(d\ge2\), visualize \(g(z_1,z_2)\); interpret interactions using supported \(X_j,X_k\) contrasts.};
 
-\vspace{0.25cm}
+  % 4. Inference
+  \node[
+    anchor=west,
+    text width=2.95cm,
+    align=left,
+    font=\sffamily\bfseries\scriptsize,
+    text=emoryblue
+  ] at (0.48,1.85) {4) Are CIs available?};
+  \node[anchor=west,font=\sffamily\bfseries\scriptsize,text=textcharcoal]
+    at (4.08,2.09) {Analytic pointwise 95\% CIs are available for \(\widehat\mu_{\widehat\beta}(z)\)};
+  \node[
+    anchor=west,
+    text width=10.45cm,
+    align=left,
+    font=\fontsize{7}{8}\selectfont,
+    text=secondarygray
+  ] at (4.08,1.66) {Inference for \(\widehat\beta\), \(\widehat\lambda\), and \(\widehat d\) is available only through bootstrapping.};
 
-\centering
-
-\method{Causal nuisance estimation} \(\longrightarrow\)
-\method{standard SDR} \(\longrightarrow\) \method{reduced causal ERS}
+  % 5. Computation
+  \node[
+    anchor=west,
+    text width=2.95cm,
+    align=left,
+    font=\sffamily\bfseries\scriptsize,
+    text=emoryblue
+  ] at (0.48,0.67) {5) How long does it take?};
+  \node[anchor=west,font=\sffamily\bfseries\scriptsize,text=textcharcoal]
+    at (4.08,0.91) {Runtime depends on \(n\), \(p\), and the nuisance learners};
+  \node[
+    anchor=west,
+    text width=10.45cm,
+    align=left,
+    font=\fontsize{7}{8}\selectfont,
+    text=secondarygray
+  ] at (4.08,0.48) {The more computationally intensive the nuisance fit, the longer the full CSDR takes.};
+\end{tikzpicture}
+\end{center}
 \end{frame}
 
-\begin{frame}{What does the researcher get?}
-\phantomsection\label{what-does-the-researcher-get}
-\begin{columns}[T]
-\begin{column}{0.3\textwidth}
-\begin{block}{Dimension}
-\phantomsection\label{dimension}
-\centering
+\section{Simulations and Real Data}\label{simulations-and-real-data}
 
-\Huge \(\widehat d\)
+\begin{frame}{CSDR improves the estimated exposure-response curve}
+\phantomsection\label{csdr-improves-the-estimated-exposure-response-curve}
+\begingroup
+\captionsetup{font=pfasapplication}
 
-\normalsize
-
-How many causal directions are needed?
-\end{block}
-\end{column}
-
-\begin{column}{0.32\textwidth}
-\begin{block}{Importance}
-\phantomsection\label{importance}
-\centering
-
-\Huge \(\widehat\lambda_j\)
-
-\normalsize
-
-Which exposures contribute to the subspace?
-\end{block}
-\end{column}
-
-\begin{column}{0.32\textwidth}
-\begin{block}{Response}
-\phantomsection\label{response}
-\centering
-
-\Huge \(\widehat\mu(z)\)
-
-\normalsize
-
-What is the shape of the joint causal response?
-\end{block}
-\end{column}
-\end{columns}
-
-\vspace{0.35cm}
-
-\begin{alertblock}{Subspace importance score}
-\phantomsection\label{subspace-importance-score}
-\[
-\lambda_j=P_{jj},
-\qquad
-P=\beta(\beta^\top\beta)^{-1}\beta^\top,
-\qquad
-\sum_{j=1}^p\lambda_j=d.
-\]
-\end{alertblock}
-\end{frame}
-
-\section{From method to evidence}\label{from-method-to-evidence}
-
-\begin{frame}{Reduction can improve the final scientific estimate}
-\phantomsection\label{reduction-can-improve-the-final-scientific-estimate}
 \begin{figure}
 
 \centering{
 
-\includegraphics[width=0.6\textwidth,height=\textheight]{../../results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png}
+\includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../../results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png}
 
 }
 
-\caption{\label{fig-simulation-coverage}Pointwise coverage for the
-causal exposure--response surface}
+\caption{\label{fig-simulation-coverage}Pointwise 95\% coverage for the
+exposure-response curve (\(p=10\), \(d=2\)); methods differ only in
+\(\beta\) estimation.}
 
 \end{figure}%
 
-\footnotesize
+\endgroup
+\vspace{-0.34cm}
 
-\method{Simulation message:} CSDR improved accuracy and coverage versus
-full \(X\) and noncausal reductions.
+\pause
+
+\scriptsize
+
+\method{Simulation message:} CSDR approaches the oracle and outperforms
+Full \(X\) (no dimension reduction), MAVE (no confounding adjustment),
+and pCCA (only linear confounding adjustment). Both causal adjustment
+and dimension reduction matter.
 \end{frame}
 
 \begin{frame}{PFAS application: four exposures summarized in one
 direction}
 \phantomsection\label{pfas-application-four-exposures-summarized-in-one-direction}
 \begin{columns}[T]
-\begin{column}{0.39\textwidth}
-\small
+\begin{column}{0.39\linewidth}
+\centering
+\begin{tikzpicture}[x=0.46cm,y=0.72cm]
+  \path[use as bounding box] (0,0) rectangle (12.00,7.42);
 
-\textbf{Study:} 305 term births in the Atlanta African American
-Maternal-Child Cohort (ATL-AA)
+  % Study setup
+  \node[
+    anchor=north west,
+    text width=5.30cm,
+    align=left,
+    font=\sffamily\fontsize{7.0}{8.4}\selectfont,
+    text=textcharcoal
+  ] at (0.12,7.28) {We use the \textbf{Atlanta African American
+  Maternal-Child Cohort} (\(n\!=\!305\)) to study the effect of a PFAS
+  mixture (\(p\!=\!4\)) on infant birthweight. Covariates include maternal
+  age, BMI, education, tobacco use, marijuana use, and infant sex.};
 
-\textbf{Exposures:} PFOS, PFOA, PFNA, PFHxS
+  % Estimated results
+  \filldraw[
+    fill=lightpanel!68!white,
+    draw=rulegray,
+    line width=0.60pt,
+    rounded corners=4pt
+  ] (0.10,0.10) rectangle (11.90,4.10);
 
-\textbf{Selected dimension:} \(\widehat d=1\)
+  % Estimated summary
+  \node[
+    anchor=west,
+    font=\sffamily\bfseries\tiny,
+    text=emoryblue
+  ] at (0.48,3.77) {ESTIMATED REDUCTION \((\widehat d=1)\)};
+  \node[
+    font=\sffamily\tiny,
+    text=textcharcoal,
+    anchor=base east
+  ] at (3.15,3.28) {\(\widehat{\mathsf{Z}}=\)};
+  \node[
+    font=\sffamily\tiny,
+    text=textcharcoal,
+    anchor=base west
+  ] at (3.15,3.28)
+    {\(0.77\,\text{PFOS}+0.14\,\text{PFOA}+\)};
+  \node[
+    font=\sffamily\tiny,
+    text=textcharcoal,
+    anchor=base west
+  ] at (3.15,2.79)
+    {\(0.26\,\text{PFNA}-0.56\,\text{PFHxS}\)};
+  \draw[rulegray,line width=0.45pt] (0.48,2.40) -- (11.52,2.40);
 
-\[
-\begin{aligned}
-\widehat Z={}&0.77\,PFOS+0.14\,PFOA\\
-             &+0.26\,PFNA-0.56\,PFHxS
-\end{aligned}
-\]
+  % SIS lollipop report
+  \node[
+    anchor=west,
+    font=\sffamily\bfseries\tiny,
+    text=emoryblue
+  ] at (0.48,2.12) {SUBSPACE IMPORTANCE SCORE \(\widehat\lambda_j\)};
 
-\textbf{SIS:} PFOS 0.60; PFOA 0.02; PFNA 0.07; PFHxS 0.31
+  \foreach \y in {1.76,1.37,0.98,0.59} {
+    \draw[rulegray,line width=0.55pt] (3.25,\y) -- (9.65,\y);
+  }
+  \node[font=\tiny,text=textcharcoal,anchor=east] at (2.78,1.76) {PFOS};
+  \node[font=\tiny,text=textcharcoal,anchor=east] at (2.78,1.37) {PFOA};
+  \node[font=\tiny,text=textcharcoal,anchor=east] at (2.78,0.98) {PFNA};
+  \node[font=\tiny,text=textcharcoal,anchor=east] at (2.78,0.59) {PFHxS};
+
+  \draw[emoryblue!58!white,line width=2.00pt] (3.25,1.76) -- (7.09,1.76);
+  \fill[emoryblue] (7.09,1.76) circle[radius=1.35pt];
+  \node[font=\tiny,text=secondarygray,anchor=west] at (9.95,1.76) {0.60};
+
+  \draw[emoryblue!58!white,line width=2.00pt] (3.25,1.37) -- (3.38,1.37);
+  \fill[emoryblue] (3.38,1.37) circle[radius=1.35pt];
+  \node[font=\tiny,text=secondarygray,anchor=west] at (9.95,1.37) {0.02};
+
+  \draw[emoryblue!58!white,line width=2.00pt] (3.25,0.98) -- (3.70,0.98);
+  \fill[emoryblue] (3.70,0.98) circle[radius=1.35pt];
+  \node[font=\tiny,text=secondarygray,anchor=west] at (9.95,0.98) {0.07};
+
+  \draw[emoryblue!58!white,line width=2.00pt] (3.25,0.59) -- (5.23,0.59);
+  \fill[emoryblue] (5.23,0.59) circle[radius=1.35pt];
+  \node[font=\tiny,text=secondarygray,anchor=west] at (9.95,0.59) {0.31};
+\end{tikzpicture}
 \end{column}
 
-\begin{column}{0.58\textwidth}
+\begin{column}{0.58\linewidth}
+\begingroup
+\captionsetup{font=pfasapplication}
+
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.9\textwidth,height=\textheight]{../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf}
+{\centering \includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio]{../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf}
 
 }
 
 \caption{PFAS exposure-response curve from ATL-AA}
 
 \end{figure}%
+
+\endgroup
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}[fragile]{Where CSDR fits in the analyst's toolbox}
-\phantomsection\label{where-csdr-fits-in-the-analysts-toolbox}
-\small
+\begin{frame}{BKMR and qgcomp comparison analysis}
+\phantomsection\label{bkmr-and-qgcomp-comparison-analysis}
+\vspace{-0.10cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.465\linewidth}
+\begin{block}{BKMR}
+\begin{minipage}[t][4.55cm][t]{\linewidth}
+\begin{minipage}[c][3.75cm][c]{\linewidth}
+\centering
+\includegraphics[
+  width=0.96\linewidth,
+  height=3.45cm,
+  keepaspectratio
+]{../../results/jasa-initial-submission/ATL-AA/bkmr_diff.pdf}
+\end{minipage}
 
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-If the scientific question is\ldots{}
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-A natural starting point is\ldots{}
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-Effect of increasing all exposures by one quantile & qgcomp \\
-Flexible response in the original \(p\)-dimensional space & BKMR /
-BART \\
-Shared exposure patterns, sources, or unusual events & PCP /
-\texttt{pcpr} \\
-Lowest-dimensional summary preserving the causal mean & \textbf{CSDR /
-\texttt{csdr}} \\
-\bottomrule\noalign{}
-\end{longtable}
+\vspace{0.04cm}
 
-\normalsize
+\begin{minipage}[c][0.52cm][c]{\linewidth}
+\centering
+{\scriptsize\color{secondarygray}
+All four PFAS share a quantile versus the median.}
+\end{minipage}
+\end{minipage}
+\end{block}
+\end{column}
 
-\begin{alertblock}{CSDR is especially attractive when}
-\phantomsection\label{csdr-is-especially-attractive-when}
-A low-dimensional causal structure is scientifically plausible, but
-neither \(d=1\) nor \(d=p\) should be imposed in advance.
-\end{alertblock}
+\hfill
+
+\begin{column}{0.465\linewidth}
+\begin{block}{qgcomp}
+\begin{minipage}[t][4.55cm][t]{\linewidth}
+\begin{minipage}[c][3.75cm][c]{\linewidth}
+\centering
+\includegraphics[
+  width=0.96\linewidth,
+  height=3.45cm,
+  keepaspectratio
+]{../../results/jasa-initial-submission/ATL-AA/qgcomp.pdf}
+\end{minipage}
+
+\vspace{0.04cm}
+
+\begin{minipage}[c][0.52cm][c]{\linewidth}
+\centering
+{\scriptsize\color{secondarygray}
+All four PFAS shift together across exposure quartiles.}
+\end{minipage}
+\end{minipage}
+\end{block}
+\end{column}
+\end{columns}
+
+\vspace{0.12cm}
+
+\begin{center}
+\scriptsize
+\method{Takeaway:} Different estimands, but in general, increasing PFAS leads to
+decreasing birthweight.
+\end{center}
 \end{frame}
 
 \section{\texorpdfstring{The \texttt{csdr}
 workflow}{The csdr workflow}}\label{the-csdr-workflow}
 
-\begin{frame}[fragile]{Every analysis starts with three objects}
-\phantomsection\label{every-analysis-starts-with-three-objects}
+\begin{frame}[fragile,t]{Setup outcome, exposures, and confounders}
+\phantomsection\label{setup-outcome-exposures-and-confounders}
 \begin{columns}[T]
-\begin{column}{0.6\textwidth}
-\scriptsize
+\begin{column}{0.4\linewidth}
+\method{R code}
+
+\workflowcodefont
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \FunctionTok{library}\NormalTok{(csdr)}
+\FunctionTok{data}\NormalTok{(csdr\_example2)}
 
-\NormalTok{Y }\OtherTok{\textless{}{-}}\NormalTok{ dat}\SpecialCharTok{$}\NormalTok{birth\_weight}
+\NormalTok{Y }\OtherTok{\textless{}{-}}\NormalTok{ csdr\_example2}\SpecialCharTok{$}\NormalTok{Y}
+\NormalTok{A }\OtherTok{\textless{}{-}}\NormalTok{ csdr\_example2}\SpecialCharTok{$}\NormalTok{A}
+\NormalTok{C }\OtherTok{\textless{}{-}}\NormalTok{ csdr\_example2}\SpecialCharTok{$}\NormalTok{C}
 
-\NormalTok{A\_vars }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"PFOS"}\NormalTok{, }\StringTok{"PFOA"}\NormalTok{, }\StringTok{"PFNA"}\NormalTok{, }\StringTok{"PFHxS"}\NormalTok{)}
-\NormalTok{A }\OtherTok{\textless{}{-}}\NormalTok{ dat[A\_vars]}
-
-\NormalTok{C }\OtherTok{\textless{}{-}} \FunctionTok{model.matrix}\NormalTok{(}
-  \SpecialCharTok{\textasciitilde{}}\NormalTok{ age }\SpecialCharTok{+}\NormalTok{ bmi }\SpecialCharTok{+}\NormalTok{ education }\SpecialCharTok{+}\NormalTok{ tobacco }\SpecialCharTok{+}
-\NormalTok{    marijuana }\SpecialCharTok{+}\NormalTok{ sex,}
-  \AttributeTok{data =}\NormalTok{ dat}
-\NormalTok{)[, }\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{, drop }\OtherTok{=} \ConstantTok{FALSE}\NormalTok{]}
+\FunctionTok{head}\NormalTok{(Y, }\DecValTok{5}\NormalTok{)}
+\FunctionTok{head}\NormalTok{(A[, }\FunctionTok{c}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\DecValTok{3}\NormalTok{, }\DecValTok{18}\SpecialCharTok{:}\DecValTok{20}\NormalTok{)], }\DecValTok{5}\NormalTok{)}
+\FunctionTok{head}\NormalTok{(C, }\DecValTok{5}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 \end{column}
 
-\begin{column}{0.36\textwidth}
-\begin{block}{Outcome}
-\phantomsection\label{outcome}
-\(Y\): health endpoint
-\end{block}
+\begin{column}{0.56\linewidth}
+\method{Console}
 
-\begin{block}{Exposures}
-\phantomsection\label{exposures-1}
-\(A\): continuous mixture
-\end{block}
+\workflowcodefont
 
-\begin{block}{Confounders}
-\phantomsection\label{confounders}
-\(C\): sufficient adjustment set
-\end{block}
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{\textgreater{} head(Y, 5)}
+\NormalTok{     obs1      obs2      obs3      obs4      obs5}
+\NormalTok{  0.3805    0.1838   {-}2.0486    0.4977    5.4798}
+
+\NormalTok{\textgreater{} head(A[, c(1:3, 18:20)], 5)}
+\NormalTok{         A1     A2     A3    A18    A19    A20}
+\NormalTok{obs1 {-}1.066  1.573  0.953  0.033 {-}0.480  0.500}
+\NormalTok{obs2 {-}1.028  0.325 {-}0.364 {-}0.967 {-}1.543 {-}0.572}
+\NormalTok{obs3 {-}0.800 {-}0.103 {-}0.433 {-}0.011  0.505  0.623}
+\NormalTok{obs4  2.492  0.582 {-}1.134 {-}1.473 {-}1.138  1.551}
+\NormalTok{obs5  1.733 {-}0.114  0.615  1.083  0.350  0.133}
+
+\NormalTok{\textgreater{} head(C, 5)}
+\NormalTok{         C1    C2     C3     C4     C5}
+\NormalTok{obs1 {-}0.935 1.312 {-}0.294 {-}1.979  1.150}
+\NormalTok{obs2 {-}0.694 0.531  0.367 {-}2.259 {-}1.293}
+\NormalTok{obs3 {-}0.548 0.712 {-}0.088 {-}0.407  1.828}
+\NormalTok{obs4  0.766 1.050 {-}0.498 {-}0.593 {-}0.604}
+\NormalTok{obs5  1.852 {-}0.554  0.849  0.643 {-}0.312}
+\end{Highlighting}
+\end{Shaded}
 \end{column}
 \end{columns}
-
-\small
-
-\method{Notation bridge:} The package calls the exposure mixture
-\texttt{A}; this is the \(X\) used in the causal framework.
 \end{frame}
 
-\begin{frame}[fragile]{Fit the causal subspace}
+\begin{frame}[fragile,t]{Fit the causal subspace}
 \phantomsection\label{fit-the-causal-subspace}
 \begin{columns}[T]
-\begin{column}{0.62\textwidth}
-\scriptsize
+\begin{column}{0.4\linewidth}
+\method{R code}
+
+\workflowcodefont
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{learners }\OtherTok{\textless{}{-}} \FunctionTok{csdr\_learners}\NormalTok{(}\AttributeTok{sl\_library =} \StringTok{"SL.glm"}\NormalTok{)}
+\NormalTok{sl\_lib }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
+  \StringTok{"SL.glm"}\NormalTok{, }\StringTok{"SL.earth"}\NormalTok{, }\StringTok{"SL.ranger"}
+\NormalTok{)}
 
+\NormalTok{learners }\OtherTok{\textless{}{-}} \FunctionTok{csdr\_learners}\NormalTok{(}
+  \AttributeTok{sl\_library =}\NormalTok{ sl\_lib}
+\NormalTok{)}
+
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{42}\NormalTok{)}
 \NormalTok{fit }\OtherTok{\textless{}{-}} \FunctionTok{csdr}\NormalTok{(}
   \AttributeTok{Y =}\NormalTok{ Y, }\AttributeTok{A =}\NormalTok{ A, }\AttributeTok{C =}\NormalTok{ C,}
-  \AttributeTok{variants =} \StringTok{"DR"}\NormalTok{,}
-  \AttributeTok{d =} \ConstantTok{NULL}\NormalTok{, }\AttributeTok{max\_dim =} \DecValTok{3}\NormalTok{,}
   \AttributeTok{L =} \DecValTok{5}\NormalTok{, }\AttributeTok{seed =} \DecValTok{42}\NormalTok{,}
   \AttributeTok{learners =}\NormalTok{ learners,}
-  \AttributeTok{keep\_nuisance =} \ConstantTok{TRUE}\NormalTok{,}
-  \AttributeTok{verbose =} \ConstantTok{FALSE}
+  \AttributeTok{max\_dim =} \DecValTok{5}\NormalTok{,}
+  \AttributeTok{keep\_nuisance =} \ConstantTok{TRUE}
 \NormalTok{)}
+
+\FunctionTok{summary}\NormalTok{(fit)}
 \end{Highlighting}
 \end{Shaded}
 \end{column}
 
-\begin{column}{0.34\textwidth}
-\begin{block}{What happens}
-\phantomsection\label{what-happens}
-\begin{enumerate}
-\tightlist
-\item
-  Cross-fit nuisance models
-\item
-  Construct \(\widetilde Y\)
-\item
-  Run MAVE
-\item
-  Select \(\widehat d\)
-\item
-  Return the fitted subspace
-\end{enumerate}
-\end{block}
-\end{column}
-\end{columns}
+\begin{column}{0.56\linewidth}
+\method{Console}
 
-\muted{\texttt{DR} is the package default. \texttt{SL.glm} keeps the tutorial fast; use a prespecified richer library for the substantive analysis.}
-\end{frame}
-
-\begin{frame}[fragile]{Inspect dimension and importance before effects}
-\phantomsection\label{inspect-dimension-and-importance-before-effects}
-\begin{columns}[T]
-\begin{column}{0.47\textwidth}
-\scriptsize
+\workflowcodefont
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{summary}\NormalTok{(fit)}
+\NormalTok{\textgreater{} summary(fit)}
+\NormalTok{Summary of causal sufficient dimension reduction fit}
 
-\NormalTok{B\_hat }\OtherTok{\textless{}{-}} \FunctionTok{coef}\NormalTok{(fit, }\AttributeTok{variant =} \StringTok{"DR"}\NormalTok{)}
-\NormalTok{Z\_hat }\OtherTok{\textless{}{-}} \FunctionTok{scores}\NormalTok{(fit, }\AttributeTok{variant =} \StringTok{"DR"}\NormalTok{)}
+\NormalTok{ variant d\_hat  n p mave\_method target\_exposure}
+\NormalTok{      DR     2 100 20   meanMAVE               A}
 
-\NormalTok{mave }\OtherTok{\textless{}{-}} \FunctionTok{mave\_fits}\NormalTok{(fit, }\AttributeTok{variant =} \StringTok{"DR"}\NormalTok{)}
+\NormalTok{Learners:}
+\NormalTok{ outcome: SuperLearner regression}
+\NormalTok{   family: gaussian}
+\NormalTok{   SL.library: SL.glm, SL.earth, SL.ranger}
+\NormalTok{ gps: MVN GPS with linear conditional mean}
+\NormalTok{   method\_gps: linear; density\_floor: 1e{-}16}
+
+\NormalTok{Target construction:}
+\NormalTok{Effective folds: 5}
+\NormalTok{PO marginalization: crossfit}
+\end{Highlighting}
+\end{Shaded}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile,t]{Inspect the fitted subspace and scores}
+\phantomsection\label{inspect-the-fitted-subspace-and-scores}
+\begin{columns}[T]
+\begin{column}{0.4\linewidth}
+\method{R code}
+
+\workflowcodefont
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{B\_hat }\OtherTok{\textless{}{-}} \FunctionTok{coef}\NormalTok{(fit)}
+\NormalTok{Z\_hat }\OtherTok{\textless{}{-}} \FunctionTok{scores}\NormalTok{(fit)}
+
+\NormalTok{mave }\OtherTok{\textless{}{-}} \FunctionTok{mave\_fits}\NormalTok{(fit)}
 \NormalTok{dim\_selection }\OtherTok{\textless{}{-}}\NormalTok{ mave}\SpecialCharTok{$}\NormalTok{dimension\_selection}
 
-\NormalTok{Q\_hat }\OtherTok{\textless{}{-}} \FunctionTok{qr.Q}\NormalTok{(}\FunctionTok{qr}\NormalTok{(B\_hat))}
-\NormalTok{sis }\OtherTok{\textless{}{-}} \FunctionTok{rowSums}\NormalTok{(Q\_hat}\SpecialCharTok{\^{}}\DecValTok{2}\NormalTok{)}
+\NormalTok{B\_hat[}\FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{20}\NormalTok{), , drop }\OtherTok{=} \ConstantTok{FALSE}\NormalTok{]}
+\FunctionTok{sis}\NormalTok{(fit)}
+\FunctionTok{head}\NormalTok{(Z\_hat, }\DecValTok{2}\NormalTok{)}
+\NormalTok{dim\_selection}
 \end{Highlighting}
 \end{Shaded}
-
-\small
-
-\textbf{PFAS SIS:} PFOS 0.60; PFOA 0.02; PFNA 0.07; PFHxS 0.31
 \end{column}
 
-\begin{column}{0.49\textwidth}
-\begin{alertblock}{Visual placeholder}
-\phantomsection\label{visual-placeholder}
-\centering
-\vspace{0.20cm}
+\begin{column}{0.56\linewidth}
+\method{Console}
 
-\fbox{\parbox[c][3.0cm][c]{0.88\linewidth}{
-\centering
-\textbf{Replace with package output}\\[0.15cm]
-Dimension CV curve\\
-+\\
-SIS dot plot with bootstrap intervals
-}}
-\end{alertblock}
+\workflowcodefont
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{\textgreater{} B\_hat[c(1, 2, 20), , drop = FALSE]}
+\NormalTok{       dir1    dir2}
+\NormalTok{A1 {-}0.3401  0.5777}
+\NormalTok{A2 {-}0.3524  0.4195}
+\NormalTok{A20 {-}0.0521 0.0784}
+
+\NormalTok{\textgreater{} sis(fit)}
+\NormalTok{    A1    A2    A3    A4    A5    A6    A7    A8    A9   A10}
+\NormalTok{ 0.464 0.312 0.533 0.390 0.000 0.004 0.002 0.020 0.001 0.021}
+\NormalTok{   A11   A12   A13   A14   A15   A16   A17   A18   A19   A20}
+\NormalTok{ 0.068 0.059 0.028 0.020 0.006 0.005 0.015 0.036 0.006 0.009}
+
+\NormalTok{\textgreater{} head(Z\_hat, 2)}
+\NormalTok{       score1  score2}
+\NormalTok{obs1  {-}0.1862  0.4515}
+\NormalTok{obs2   1.5224 {-}0.3484}
+
+\NormalTok{\textgreater{} dim\_selection}
+\NormalTok{Dimensions      0    1    2    3    4    5}
+\NormalTok{CV{-}value     1.58 1.13 0.75 0.77 0.92 0.97}
+\NormalTok{Selected dimension: 2}
+\end{Highlighting}
+\end{Shaded}
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}[fragile]{Estimate the response in the reduced exposure}
+\begin{frame}[fragile,t]{Estimate the response in the reduced exposure}
 \phantomsection\label{estimate-the-response-in-the-reduced-exposure}
 \begin{columns}[T]
-\begin{column}{0.47\textwidth}
-\tiny
+\begin{column}{0.4\linewidth}
+\method{R code}
+
+\workflowcodefont
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{z\_grid }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\FunctionTok{seq}\NormalTok{(}
+\NormalTok{z\_grid }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}
+  \FunctionTok{rep}\NormalTok{(}\FunctionTok{apply}\NormalTok{(Z\_hat, }\DecValTok{2}\NormalTok{, median), }\AttributeTok{each =} \DecValTok{50}\NormalTok{),}
+  \AttributeTok{nrow =} \DecValTok{50}\NormalTok{,}
+  \AttributeTok{dimnames =} \FunctionTok{list}\NormalTok{(}\ConstantTok{NULL}\NormalTok{, }\FunctionTok{colnames}\NormalTok{(Z\_hat))}
+\NormalTok{)}
+\NormalTok{z\_grid[, }\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}} \FunctionTok{seq}\NormalTok{(}
   \FunctionTok{quantile}\NormalTok{(Z\_hat[, }\DecValTok{1}\NormalTok{], }\FloatTok{0.05}\NormalTok{),}
   \FunctionTok{quantile}\NormalTok{(Z\_hat[, }\DecValTok{1}\NormalTok{], }\FloatTok{0.95}\NormalTok{),}
   \AttributeTok{length.out =} \DecValTok{50}
-\NormalTok{), }\AttributeTok{ncol =} \DecValTok{1}\NormalTok{)}
+\NormalTok{)}
 
 \NormalTok{ers }\OtherTok{\textless{}{-}} \FunctionTok{estimate\_ers}\NormalTok{(}
   \AttributeTok{Y =}\NormalTok{ Y, }\AttributeTok{A =}\NormalTok{ Z\_hat, }\AttributeTok{C =}\NormalTok{ C,}
@@ -1111,104 +2330,72 @@ SIS dot plot with bootstrap intervals
   \AttributeTok{verbose =} \ConstantTok{FALSE}
 \NormalTok{)}
 
-\NormalTok{ers}\SpecialCharTok{$}\NormalTok{results}
+\FunctionTok{head}\NormalTok{(ers}\SpecialCharTok{$}\NormalTok{results)}
 \end{Highlighting}
 \end{Shaded}
 \end{column}
 
-\begin{column}{0.5\textwidth}
-\includegraphics[width=0.86\textwidth,height=\textheight]{../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf}
-\end{column}
-\end{columns}
+\begin{column}{0.56\linewidth}
+\method{Console}
 
-\small
-
-\method{Read the rug before the curve:} Uncertainty and causal
-interpretation are strongest where the reduced exposure has adequate
-support.
-\end{frame}
-
-\begin{frame}[fragile]{A credible analysis includes diagnostics}
-\phantomsection\label{a-credible-analysis-includes-diagnostics}
-\begin{columns}[T]
-\begin{column}{0.45\textwidth}
-\begin{block}{Check}
-\phantomsection\label{check}
-\begin{itemize}
-\tightlist
-\item
-  Dimension-selection profile
-\item
-  Distribution and support of \(\widehat Z\)
-\item
-  Nuisance-model performance
-\item
-  RA versus DR sensitivity
-\item
-  Bootstrap SIS intervals
-\end{itemize}
-\end{block}
-\end{column}
-
-\begin{column}{0.51\textwidth}
-\tiny
+\workflowcodefont
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{fit\_sens }\OtherTok{\textless{}{-}} \FunctionTok{csdr}\NormalTok{(}
-  \AttributeTok{Y =}\NormalTok{ Y, }\AttributeTok{A =}\NormalTok{ A, }\AttributeTok{C =}\NormalTok{ C,}
-  \AttributeTok{variants =} \FunctionTok{c}\NormalTok{(}\StringTok{"RA"}\NormalTok{, }\StringTok{"DR"}\NormalTok{),}
-  \AttributeTok{L =} \DecValTok{5}\NormalTok{, }\AttributeTok{seed =} \DecValTok{42}\NormalTok{,}
-  \AttributeTok{learners =}\NormalTok{ learners,}
-  \AttributeTok{verbose =} \ConstantTok{FALSE}
-\NormalTok{)}
-
-\FunctionTok{summary}\NormalTok{(fit\_sens)}
-
-\NormalTok{outcome\_fits }\OtherTok{\textless{}{-}} \FunctionTok{nuisance\_fits}\NormalTok{(fit, }\AttributeTok{role =} \StringTok{"outcome"}\NormalTok{)}
-\NormalTok{gps\_fits }\OtherTok{\textless{}{-}} \FunctionTok{nuisance\_fits}\NormalTok{(fit, }\AttributeTok{role =} \StringTok{"gps"}\NormalTok{)}
+\NormalTok{\textgreater{} head(ers$results)}
+\NormalTok{  score1 score2 estimate     se ci\_lower ci\_upper effective\_n}
+\NormalTok{1 {-}1.990 0.0015    2.676 0.5599    1.579    3.774       4.502}
+\NormalTok{2 {-}1.912 0.0015    2.693 0.4762    1.760    3.627       4.559}
+\NormalTok{3 {-}1.834 0.0015    2.703 0.3920    1.935    3.472       4.671}
+\NormalTok{4 {-}1.756 0.0015    2.703 0.3136    2.088    3.317       4.851}
+\NormalTok{5 {-}1.678 0.0015    2.687 0.2493    2.198    3.176       5.113}
+\NormalTok{6 {-}1.601 0.0015    2.652 0.2100    2.241    3.064       5.476}
+\NormalTok{    min\_gps h\_used\_1 h\_used\_2}
+\NormalTok{1 4.049e{-}05    0.578    0.596}
+\NormalTok{2 4.049e{-}05    0.578    0.596}
+\NormalTok{3 4.049e{-}05    0.578    0.596}
+\NormalTok{4 4.049e{-}05    0.578    0.596}
+\NormalTok{5 4.049e{-}05    0.578    0.596}
+\NormalTok{6 4.049e{-}05    0.578    0.596}
 \end{Highlighting}
 \end{Shaded}
 \end{column}
 \end{columns}
-
-\method{Shared folds:} Compare RA and DR dimensions, subspaces, and
-response curves.
 \end{frame}
 
-\section{Takeaways}\label{takeaways}
+\section{Conclusion}\label{conclusion}
 
 \begin{frame}[fragile]{When should I use CSDR?}
 \phantomsection\label{when-should-i-use-csdr}
 \begin{columns}[T]
-\begin{column}{0.55\textwidth}
+\begin{column}{0.6\linewidth}
 \begin{block}{Use CSDR when you want}
 \phantomsection\label{use-csdr-when-you-want}
 \begin{itemize}
 \tightlist
 \item
-  A \textbf{joint causal exposure--response}
+  A joint causal exposure-response curve
 \item
-  A \textbf{data-adaptive dimension}
+  Supervised dimension reduction with estimated \(d\)
 \item
-  A flexible nonlinear response
+  Flexible modeling of complex relationships
 \item
-  Exposure contribution summaries
+  Variable importance measures
 \end{itemize}
 \end{block}
 \end{column}
 
-\begin{column}{0.41\textwidth}
+\begin{column}{0.36\linewidth}
 \begin{block}{CSDR does not replace}
 \phantomsection\label{csdr-does-not-replace}
 \begin{itemize}
 \tightlist
 \item
-  Study design
+  Good study design
 \item
   Confounder selection
 \item
-  Positivity assessment
+  Adequate exposure support
 \item
   Sensitivity analysis
 \end{itemize}
@@ -1216,16 +2403,45 @@ response curves.
 \end{column}
 \end{columns}
 
+\pause
+
 \begin{alertblock}{One-sentence takeaway}
 \phantomsection\label{one-sentence-takeaway}
-CSDR learns the smallest exposure representation needed to preserve the
-causal mean response---and \texttt{csdr} turns that target into an
-applied workflow.
+CSDR learns the smallest exposure representation \(Z=\beta^\top X\) that
+preserves the exposure-response curve, and \texttt{csdr} turns that
+target into an applied workflow.
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{Paper and package}
-\phantomsection\label{paper-and-package}
+\begin{frame}{Acknowledgments}
+\phantomsection\label{acknowledgments}
+\centering
+\large
+
+\method{Postdoctoral advisors}\\[0.16cm]
+\textbf{Howard Chang}
+\hspace{0.28cm}\raisebox{-0.08cm}{\color{emorygold}\rule{0.8pt}{0.38cm}}\hspace{0.28cm}
+\textbf{Razieh Nabi}\\[0.12cm]
+\small For their mentorship, guidance, and support.
+
+\vspace{0.36cm}
+{\color{rulegray}\rule{0.72\linewidth}{0.6pt}}
+\vspace{0.32cm}
+
+\large
+\method{Collaborators}\\[0.16cm]
+\textbf{Anne Dunlop}
+\hspace{0.18cm}\raisebox{-0.08cm}{\color{emorygold}\rule{0.8pt}{0.38cm}}\hspace{0.18cm}
+\textbf{Stephanie Eick}
+\hspace{0.18cm}\raisebox{-0.08cm}{\color{emorygold}\rule{0.8pt}{0.38cm}}\hspace{0.18cm}
+\textbf{Donghai Liang}
+\hspace{0.18cm}\raisebox{-0.08cm}{\color{emorygold}\rule{0.8pt}{0.38cm}}\hspace{0.18cm}
+\textbf{Youran Tan}\\[0.14cm]
+\small For sharing the ATL-AA cohort data and for their thoughtful discussions.
+\end{frame}
+
+\begin{frame}{Questions?}
+\phantomsection\label{questions}
 \centering
 \vspace{0.18cm}
 
@@ -1254,54 +2470,273 @@ applied workflow.
 \end{columns}
 \end{frame}
 
-\begin{frame}{Acknowledgements}
-\phantomsection\label{acknowledgements}
-\centering
-\large
-
-\method{Postdoctoral advisors}\\[0.16cm]
-\textbf{Dr. Howard Chang}
-\hspace{0.28cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.28cm}
-\textbf{Dr. Razieh Nabi}\\[0.12cm]
-\small For their mentorship, guidance, and support.
-
-\vspace{0.52cm}
-{\color{rulegray}\rule{0.72\linewidth}{0.6pt}}
-\vspace{0.46cm}
-
-\large
-\method{ATL-AA collaborators}\\[0.16cm]
-\textbf{Dr. Donghai Liang}
-\hspace{0.22cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.22cm}
-\textbf{Youran Tan}
-\hspace{0.22cm}{\color{emorygold}\vrule width 0.8pt height 0.38cm depth 0.06cm}\hspace{0.22cm}
-\textbf{Dr. Anne Dunlop}\\[0.12cm]
-\small For sharing the ATL-AA cohort data and for their thoughtful discussions.
-\end{frame}
-
-\section{Questions?}\label{questions}
-
 \section{Appendix}\label{appendix}
 
 \begin{frame}{Identification assumptions}
 \phantomsection\label{identification-assumptions}
-\begin{enumerate}
-\tightlist
-\item
-  \textbf{Consistency:} observed outcomes agree with potential outcomes
-  under the observed exposure.
-\item
-  \textbf{Conditional exchangeability:} \(Y^x\perp\!\!\!\perp X\mid C\).
-\item
-  \textbf{Positivity:} exposure values of interest are supported within
-  levels of \(C\).
-\end{enumerate}
+\addtocounter{framenumber}{-1}
+\csdrrecordappendixboundary
+\addtocounter{framenumber}{1}
+\global\csdrappendixtrue
+\vspace{-0.40cm}
+\begin{block}{Assumptions A1--A5 from the CSDR framework}
+\begin{minipage}[t][4.15cm][t]{\linewidth}
+\fontsize{6.6}{7.8}\selectfont
+\setlength{\parskip}{0pt}
+\setlength{\abovedisplayskip}{2.5pt}
+\setlength{\belowdisplayskip}{2.5pt}
+\setlength{\abovedisplayshortskip}{2pt}
+\setlength{\belowdisplayshortskip}{2pt}
 
-\begin{alertblock}{Practical reminder}
-\phantomsection\label{practical-reminder}
-Dimension reduction may improve the support problem, but it does not
-justify extrapolation or repair an inadequate adjustment set.
-\end{alertblock}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.485\linewidth}
+\raggedright
+\textbf{\textcolor{emoryblue}{A1. Identification for \(X\)}}\par
+\[
+\begin{array}{@{}r@{\;}l@{\quad}l@{}}
+\text{\bfseries a)} & \text{\bfseries Consistency:}
+  & X=x\Longrightarrow Y=Y^x,\quad \forall x,\\
+\text{\bfseries b)} & \text{\bfseries Strong positivity:}
+  & \inf_{x,c}\pi(x\mid c)\ge\varepsilon>0,\\
+\text{\bfseries c)} & \text{\bfseries Conditional ignorability:}
+  & Y^x\perp\!\!\!\perp X\mid C,\quad \forall x .
+\end{array}
+\]
+
+\vspace{0.10cm}
+\textbf{\textcolor{emoryblue}{A2. Smoothness for continuous exposures}}\par
+\(\,m(\cdot,c),\pi(\cdot\mid c)\in C^3(\mathcal X)\), with uniformly
+bounded derivatives; the conditional variance and its \(x\)-derivatives are
+uniformly bounded. The kernel \(k\) is bounded, differentiable, symmetric, and
+second order:
+\[
+\int k(u)\,du=1,\qquad
+\int u\,k(u)\,du=0,\qquad
+\int u^2k(u)\,du<\infty .
+\]
+\end{column}
+
+\begin{column}{0.485\linewidth}
+\raggedright
+\textbf{\textcolor{emoryblue}{A3. Existence of the CCMS}}\par
+Let
+\[
+\mathcal A=
+\left\{S:
+\begin{array}{c}
+\mu(x)=\mu(P_Sx)\\[-1pt]
+\text{for all }x\in\mathcal X
+\end{array}
+\right\}.
+\]
+Then
+\[
+\mathcal S_{E(Y^x)}
+=\bigcap_{S\in\mathcal A}S\in\mathcal A .
+\]
+
+\vspace{0.09cm}
+\textbf{\textcolor{emoryblue}{A4. Well-defined reduced exposure}}\par
+\vspace{-0.07cm}
+\[
+\beta^\top x=\beta^\top x'
+\quad\Longrightarrow\quad
+Y^x=Y^{x'}\ \text{a.s.}
+\]
+
+\vspace{0.01cm}
+\textbf{\textcolor{emoryblue}{A5. Strong positivity for \(Z=\beta^\top X\)}}\par
+\vspace{-0.08cm}
+\[
+\inf_{z,c}
+\pi_\beta(z\mid c)\ge\varepsilon>0 .
+\]
+\end{column}
+\end{columns}
+\end{minipage}
+\end{block}
+
+\begin{tikzpicture}[remember picture,overlay]
+\node[
+  anchor=south,
+  fill=softgold,
+  rounded corners=1pt,
+  inner xsep=6pt,
+  inner ysep=4.5pt,
+  text width=0.78\paperwidth,
+  align=center
+] at ([yshift=0.62cm]current page.south) {%
+{\fontsize{6.4}{6.4}\selectfont
+\textbf{\textcolor{emorygolddark}{Identification consequence.}}
+Under A1--A5, \(Z\) inherits consistency and strong positivity,\\[-1.5pt]
+as well as conditional ignorability, and
+\(\mu(x)=\mathbb E\{m(x,C)\}\),
+\(\mu_\beta(z)=\mathbb E\{m_\beta(z,C)\}\).}};
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Additional estimation assumptions}
+\phantomsection\label{additional-estimation-assumptions}
+\vspace{-0.43cm}
+
+\begin{block}{Assumptions A6--A8 from the CSDR framework}
+\begin{minipage}[t][5.48cm][t]{\linewidth}
+\fontsize{6.5}{7.7}\selectfont
+\setlength{\parskip}{0pt}
+\setlength{\abovedisplayskip}{2.5pt}
+\setlength{\belowdisplayskip}{2.5pt}
+\setlength{\abovedisplayshortskip}{2pt}
+\setlength{\belowdisplayshortskip}{2pt}
+
+\vspace{0.08cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.405\linewidth}
+\raggedright
+\textbf{\textcolor{emoryblue}{A6. Additive confounding model}}\par
+There exist measurable functions \(g,h,f\) such that
+\[
+\begin{gathered}
+Y=g(\beta^\top X)+h(C)+\varepsilon_Y,\\[-1pt]
+\mathbb E(\varepsilon_Y\mid X,C)=0,\\[1pt]
+X=f(C)+\varepsilon_X,\\[-1pt]
+\mathbb E(\varepsilon_X\mid C)=0,\quad
+\varepsilon_X\perp\!\!\!\perp C .
+\end{gathered}
+\]
+
+\vspace{0.10cm}
+\textbf{\textcolor{emoryblue}{A8. Uniform nonsingularity}}\par
+For
+\[
+\mathcal X_{h,i}(\beta,x)=
+\begin{pmatrix}
+1\\ h^{-1}\beta^\top(X_i-x)
+\end{pmatrix},
+\]
+define the local design matrix
+\[
+S_n(\beta,x)=\frac1n\sum_{i=1}^n
+K_{h,i}(x)\,
+\mathcal X_{h,i}(\beta,x)
+\mathcal X_{h,i}(\beta,x)^\top .
+\]
+Assume
+\[
+\sup_{\beta,x}\left\|S_n(\beta,x)^{-1}\right\|=O_p(1).
+\]
+\end{column}
+
+\begin{column}{0.555\linewidth}
+\raggedright
+\textbf{\textcolor{emoryblue}{A7. csMAVE regularity conditions}}\par
+\textbf{(a)} \(X\) has compact support; its marginal density \(f_X\)
+has bounded fourth derivative and is bounded away from zero.
+
+\vspace{0.07cm}
+\textbf{(b)} \(\mu(x)=g(\beta^\top x)\), where \(g\) has bounded,
+continuous third derivatives.
+
+\vspace{0.07cm}
+\textbf{(c)} \(K\) is a spherically symmetric density with bounded
+derivative and bounded support. All moments exist, and
+\[
+\int uu^\top K(u)\,du=I .
+\]
+
+\vspace{0.05cm}
+\textbf{(d)} With
+\(
+V(z)=\partial g(z)/\partial z
+\),
+\[
+\mathbb E\!\left[
+V(\beta_0^\top X)V(\beta_0^\top X)^\top
+\right]
+\quad\text{is nonsingular}.
+\]
+
+\vspace{0.05cm}
+\textbf{(e)} The first-stage ERS estimator satisfies
+\[
+\max_{1\le i\le n}
+\left|\widehat\mu(X_i)-\mu(X_i)\right|
+=O_p(R_n),
+\qquad R_n=o(h^2).
+\]
+\end{column}
+\end{columns}
+\end{minipage}
+\end{block}
+\end{frame}
+
+\begin{frame}{Theorem 1: recovering the causal subspace}
+\phantomsection\label{theorem-1-recovering-the-causal-subspace}
+\vspace{-0.16cm}
+
+\begin{block}{Theorem 1 (Convergence of csMAVE)}
+\begin{minipage}[t][5.10cm][t]{\linewidth}
+\small
+\setlength{\abovedisplayskip}{4pt}
+\setlength{\belowdisplayskip}{4pt}
+\setlength{\abovedisplayshortskip}{3pt}
+\setlength{\belowdisplayshortskip}{3pt}
+Let \(\beta_0\) be a basis for the true CCMS
+\(\mathcal S_{\mathbb E(Y^x)}\), and let \(\widehat\beta\) minimize the
+csMAVE objective using an estimated ERS response \(\widehat\mu(X)\). Define
+\[
+\delta_n=
+\left\{\frac{\log n}{n h^p}\right\}^{1/2},
+\qquad
+\max_{1\le i\le n}
+\left|\widehat\mu(X_i)-\mu(X_i)\right|
+=O_p(R_n).
+\]
+Under Assumptions A1--A3, A7, and A8, if
+\[
+h\to0,\qquad d\ge d_0,\qquad
+\frac{nh^p}{\log n}\to\infty,
+\]
+then
+\[
+\boxed{\;
+\left\|
+(I_p-\widehat\beta\widehat\beta^\top)\beta_0
+\right\|
+=
+O_p\!\left(h^3+h\delta_n+h^{-1}R_n\right).
+\;}
+\]
+\end{minipage}
+\end{block}
+\end{frame}
+
+\begin{frame}{Theorem 2: learning the structural dimension}
+\phantomsection\label{theorem-2-learning-the-structural-dimension}
+\vspace{-0.16cm}
+
+\begin{block}{Theorem 2 (Consistency of \(\widehat d\))}
+\begin{minipage}[t][3.85cm][t]{\linewidth}
+\small
+For each candidate dimension \(d\in\{0,1,\ldots,p\}\), let
+\(\widehat\beta_d\) be the corresponding csMAVE estimate and let
+\(\operatorname{CV}(d)\) be the cross-validated prediction error for
+\(\widehat\mu(X_i)\) using the reduced exposure
+\(\widehat\beta_d^\top X_i\). Select
+\[
+\widehat d
+=
+\underset{d\in\{0,1,\ldots,p\}}{\arg\min}\;
+\operatorname{CV}(d).
+\]
+Under Assumptions A1--A3 and A7,
+\[
+\boxed{\qquad
+\Pr(\widehat d=d_0)\longrightarrow1
+\qquad\text{as }n\to\infty .
+\qquad}
+\]
+\end{minipage}
+\end{block}
 \end{frame}
 
 \begin{frame}{Choosing among causal response constructions}
@@ -1309,9 +2744,9 @@ justify extrapolation or repair an inadequate adjustment set.
 \small
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Construction
@@ -1333,9 +2768,8 @@ additive-confounding structure \\
 \end{longtable}
 
 \normalsize
-
-\muted{Teach the DR workflow once; use RA as the clearest sensitivity analysis if time permits.}
 \end{frame}
+
 
 
 

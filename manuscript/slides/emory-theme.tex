@@ -258,11 +258,14 @@
 }
 
 % ---------- Footer ----------
-% Hides numbering on the title and section-divider slides.
-% Subtracts the title slide so the first content slide is 1/N.
+% Hides numbering on the title and section-divider slides. The main-deck
+% denominator stops at the recorded boundary; appendix frames use A1/A2.
+\newif\ifcsdrappendix
+\csdrappendixfalse
+\makeatletter
+\newcommand{\csdrrecordappendixboundary}{\beamer@appendixwrite}
 \setbeamertemplate{footline}{%
-  \leavevmode
-
+  \leavevmode%
   \ifnum\value{framenumber}>1
     \hbox{%
       \begin{beamercolorbox}[
@@ -272,13 +275,20 @@
         rightskip=0.55cm
       ]{page number in head/foot}
         \hfill
-        \the\numexpr\value{framenumber}-1\relax
-        \,/\,%
-        \the\numexpr\inserttotalframenumber-1\relax
+        \ifcsdrappendix
+          A\the\numexpr\value{framenumber}-\insertmainframenumber\relax
+          \,/\,%
+          A\the\numexpr\inserttotalframenumber-\insertmainframenumber\relax
+        \else
+          \the\numexpr\value{framenumber}-1\relax
+          \,/\,%
+          \the\numexpr\insertmainframenumber-1\relax
+        \fi
       \end{beamercolorbox}
     }
   \fi
 }
+\makeatother
 
 % ---------- Tables and code ----------
 \AtBeginEnvironment{tabular}{
@@ -294,6 +304,21 @@
 \setbeamerfont{caption}{size=\small}
 \setbeamercolor{caption name}{fg=secondarygray}
 \setbeamercolor{caption}{fg=secondarygray}
+\DeclareCaptionFont{pfasapplication}{%
+  \sffamily\fontsize{7.0}{8.4}\selectfont
+}
+
+% Compact target icon for the plain-language estimand callout.
+\newcommand{\targeticon}{%
+  \tikz[baseline=-0.50ex,scale=0.12]{%
+    \draw[emoryblue,line width=0.55pt] (0,0) circle (1);
+    \draw[emoryblue,line width=0.55pt] (0,0) circle (0.58);
+    \fill[emoryblue] (0,0) circle (0.17);
+  }%
+}
+
+% Shared type size for all workflow-slide code and console panels.
+\newcommand{\workflowcodefont}{\fontsize{6.3}{7.1}\selectfont}
 
 % ---------- Semantic emphasis commands ----------
 % Proposed method or other primary concept
