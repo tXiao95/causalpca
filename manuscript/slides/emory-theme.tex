@@ -194,14 +194,14 @@
 \setbeamertemplate{itemize item}{%
   \color{emorygold}
   \raisebox{0.12em}{
-    \scriptsize$\blacktriangleright$
+    \scriptsize$\bullet$
   }
 }
 
 \setbeamertemplate{itemize subitem}{%
   \color{emoryblue}
   \raisebox{0.08em}{
-    \tiny$\blacktriangleright$
+    \tiny$\bullet$
   }
 }
 
@@ -260,8 +260,6 @@
 % ---------- Footer ----------
 % Hides numbering on the title and section-divider slides. The main-deck
 % denominator stops at the recorded boundary; appendix frames use A1/A2.
-\newif\ifcsdrappendix
-\csdrappendixfalse
 \makeatletter
 \newcommand{\csdrrecordappendixboundary}{\beamer@appendixwrite}
 \setbeamertemplate{footline}{%
@@ -275,7 +273,7 @@
         rightskip=0.55cm
       ]{page number in head/foot}
         \hfill
-        \ifcsdrappendix
+        \ifnum\value{framenumber}>\insertmainframenumber\relax
           A\the\numexpr\value{framenumber}-\insertmainframenumber\relax
           \,/\,%
           A\the\numexpr\inserttotalframenumber-\insertmainframenumber\relax
