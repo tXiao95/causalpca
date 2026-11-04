@@ -7,6 +7,10 @@ date: 2026-11-04
 date-format: "MMMM D, YYYY"
 
 bibliography: references.bib
+citeproc: false
+filters:
+  - emory-citations.lua
+  - bibliography-no-doi.lua
 
 format:
   beamer:
@@ -87,7 +91,7 @@ Current methods are:
 
 . . .
 
-\underline{\textit{Problem}}: Each has their pros and cons, but none of these are estimating $\mathbb{E}(Y^x)$.
+\underline{\textit{Problem}}: Each [@bobbBayesianKernelMachine2015;@gibsonPrincipalComponentPursuit2022;@keilQuantileBasedGComputationApproach2020] has their pros and cons, but none of these are estimating $\mathbb{E}(Y^x)$.
 
 ## Causal inference for continuous exposures
 
@@ -98,7 +102,7 @@ $\pi(x\mid c) := f_{X\mid C}(x\mid c)$.
 
 . . .
 
-A kernel-based doubly robust estimator is
+A kernel-based doubly robust estimator [@colangeloDoubleDebiasedMachine2026] is
 $$
 \widehat{\mu}_{DR}(x)
 =
@@ -116,7 +120,10 @@ where $K_h(u)=h^{-p}K(u/h)$, and $\widehat{m}$ and $\widehat{\pi}$ are estimated
 
 The doubly robust estimator only works well if we do a good job on $m(x,c)$ and $\pi(x\mid c)$. 
 $$
-\sqrt{nh^p} \cdot \lVert \widehat{m}-m\rVert\cdot \lVert\widehat{\pi} - \pi\rVert \xrightarrow{p} 0.
+\sqrt{nh^p} \cdot \lVert \widehat{m}-m\rVert\cdot \lVert\widehat{\pi} - \pi\rVert \xrightarrow{p} 0 \implies
+\sqrt{nh^{p}}
+\left\{\widehat{\mu}_{\mathrm{DR}}(x)-\mu(x)\right\}
+\rightsquigarrow \mathcal{N}(0,V_x), \qquad 
 $$
 
 . . .
@@ -126,8 +133,9 @@ For large $p$, fitting a $(p+q)$-regression and a $p$-variate density with $q$ r
 . . .
 
 \underline{\textit{Solution}}: Consider estimating the average dose-response in a lower dimensional space.
+
 $$
-\mathbb{E}(Y^x)=g(\beta^\top x), \qquad \beta \in \mathbb{R}^{p \times d}.
+\boxed{\mathbb{E}(Y^x)=g(\beta^\top x), \qquad \beta \in \mathbb{R}^{p \times d}}
 $$
 
 ## Sufficient dimension reduction (SDR)
@@ -136,17 +144,11 @@ There exists a rich literature on estimating $\beta$ that preserves the \textit{
 $$
 \mathbb{E}(Y\mid X) = g(\beta^\top X).
 $$
-Since $\beta$ is not uniquely identified, the statistical estimand is the \textbf{central mean subspace}, $\mathcal{S}_{\mathbb{E}(Y\mid X)}$, the smallest subspace satisfying this identity. 
+Since $\beta$ is not unique, the statistical estimand is the \textbf{central mean subspace}, $\mathcal{S}_{\mathbb{E}(Y\mid X)}$, the smallest subspace satisfying this identity. 
 
 . . .
 
-Once $\mathcal{S}_{\mathbb{E}(Y\mid X)}$ is estimated, we can then 
-
-1. Define new exposure $Z:=\hat{\beta}^\top X \in \mathbb{R}^d$ where $d<p$.
-2. Estimate $p$-dimensional $\mathbb{E}(Y\mid X)$ in $d$ dimensions using $\mathbb{E}(Y\mid Z)$.
-
-. . .
-
+\vspace{0.34cm}
 \underline{\textit{Problem}}: Because $\mathbb{E}(Y^x) \neq \mathbb{E}(Y\mid X=x)$ due to confounding, we cannot directly use regression SDR for our causal dose-response. 
 
 ## Ideal workflow of causal sufficient dimension reduction
@@ -316,11 +318,11 @@ Let $\mathbb{E}(Y^x)=g(\beta^\top x)$ and $\mathcal{S}_{\mathbb{E}(Y^x)}$ be the
 \end{center}
 \end{uncoverenv}
 
-# Estimation
+# Estimation and Inference
 
 ## Marginal structural model approach
 
-Using the theory of marginal structural models (Robins, 2000), Nabi et al. (2022) proposed estimating $\mathcal{S}_{\mathbb{E}(Y^x)}$ by solving the following efficient score:
+Using the theory of marginal structural models [@robinsMarginalStructuralModels2000a], @nabiSemiparametricCausalSufficient2022 proposed estimating $\mathcal{S}_{\mathbb{E}(Y^x)}$ by solving the following efficient score:
 
 $$
 \begin{aligned}
@@ -383,8 +385,6 @@ $$
 
 ## Estimation of $\widetilde{Y}$
 
-Two possible approaches:
-
 1. Causal dose-response:
    $$\widetilde{Y}=\mu(X).$$
 2. Doubly robust pseudo-outcome:
@@ -395,11 +395,14 @@ Two possible approaches:
    +\mathbb{E}_C[m(X,C)].
    $$
 
-Both require estimation of the same nuisances $m(x,c)=\mathbb{E}(Y\mid X=x,C=c)$ and $\pi(x\mid c)=f_{X\mid C}(x\mid c)$.
+Both require estimation of the same nuisances
+
+- $m(x,c)=\mathbb{E}(Y\mid X=x,C=c)$
+- $\pi(x\mid c)=f_{X\mid C}(x\mid c)$.
 
 ## Estimation of $\mathcal{S}_{\mathbb{E}(Y\mid X)}$ with MAVE
 
-The minimum average variance estimator (MAVE) from Xia et al. (2002) estimates $\beta$ and $\mathcal{S}_{\mathbb{E}(Y\mid X)}$ through a variation of local linear regression.
+The minimum average variance estimator (MAVE) from @xiaAdaptiveEstimationDimension2002 estimates $\mathcal{S}_{\mathbb{E}(Y\mid X)}$:
 \begin{align*}
   \min_{\beta^\top\beta = I_d,\; \{a_j,{b}_j\}}
   \sum_{j=1}^n \sum_{i=1}^n 
@@ -410,12 +413,11 @@ where $w_{ij} = K_h(X_i-X_j) / \sum^n_{\ell=1} K_h(X_i - X_\ell)$.
 
 ## Our CSDR Approach
 
-**CSDR Algorithm**:
+**CSDR Algorithm** [@hsiaoCausalSufficientDimension2026]:
 
-1. Use $O=(Y,X,C)$ to estimate $\widetilde{Y}$
-2. Estimate $\mathcal{S}_{\mathbb{E}(Y^x)}$ by running MAVE on $(\widetilde{Y}, X)$
-3. Estimate $\mu(x)$ by replacing $X$ with $Z:=\hat{\beta}^\top X$
-
+1. Use $O=(Y,X,C)$ to estimate $\widetilde{Y}$.
+2. Estimate $\mathcal{S}_{\mathbb{E}(Y^x)}$ by running MAVE on $(\widetilde{Y}, X)$.
+3. Estimate $\mu(x)$ by replacing $X$ with $Z:=\hat{\beta}^\top X$.
 $$
 \widehat{\mu}_{DR,\widehat{\beta}}(z)
 =
@@ -427,6 +429,7 @@ $$
 +\widehat m_{\widehat{\beta}}(z,C_i)
 \right\},
 $$
+4. Construct 95\% confidence intervals for $\hat{\mu}_{DR, \hat{\beta}}(z)$ based on empirical variance of the influence function.
 
 ## Alternative approach
 
@@ -456,57 +459,101 @@ It follows that the partial central mean subspace of $Y$ given $(X, C)$ is equal
 
 \vspace{0.34cm}
 
-\underline{\textit{Solution}}: Run partial dimension reduction directly on the regression $\mathbb{E}(Y\mid X,C)$.
+\underline{\textit{Solution}}: Run partial dimension reduction [@liGroupwiseDimensionReduction2010] directly on $\mathbb{E}(Y\mid X,C)$.
 
-## Theoretical results
+## Theoretical results: subspace estimation
 
-Let $\delta_n=\sqrt{{\log n} / ({nh^p})}$ and $R_n=\lVert \hat{\mu}(X)- \mu(X)\rVert_\infty$ (the error in estimating $\widetilde{Y}$).
+Let $\delta_n=\sqrt{{\log n} / ({nh^d})}$ and $\textcolor{red}{R_n}=\lVert \hat{\mu}(X)- \mu(X)\rVert_\infty$ (the error in estimating $\widetilde{Y}$).
 
 . . .
 
 \vspace{0.34cm}
 1. **Subspace estimation**: We establish convergence rates for estimating $\mathcal{S}_{\mathbb{E}(Y^x)}$:
 
-- Method 1: $\lVert \hat{\beta} - \beta\rVert = O_p(h^3+h\delta_n+h^{-1}R_n)$
-- Method 2: $\lVert \hat{\beta} - \beta\rVert = O_p(h^3+h\delta_n+h^{-1}\delta_n^2)$
+- Method 1: $\lVert \hat{\beta} - \beta\rVert = O_p(h^3+h\delta_n+h^{-1}\textcolor{red}{R_n})$ (dependent on $\widetilde{Y}$ estimation)
+- Method 2: $\lVert \hat{\beta} - \beta\rVert = O_p(h^3+h\delta_n+h^{-1}\delta_n^2)$ (nuisance estimation-free)
 
 . . .
 
 \vspace{0.34cm}
-2. **Structural dimension selection**: A cross-validation procedure based on MAVE consistently estimates the dimension of $\mathcal{S}_{\mathbb{E}(Y^x)}$. 
+2. **Structural dimension selection**: A cross-validation procedure consistently estimates the dimension of $\mathcal{S}_{\mathbb{E}(Y^x)}$. 
 $$
 \mathbb{P}(\widehat d=d_0)\longrightarrow 1.
 $$
 
-## Theoretical results
+## Theoretical results: asymptotic equivalence
 
 One may wonder how estimating $\mu(x)=\mathbb{E}(Y^x)$ using $\hat{\beta}_n$ compares to the true $\beta$. 
 
-We show that the error from estimating $\beta$ can be asymptotically negligible:
+. . .
 
+\textbf{Asymptotic equivalence}: We show that error in estimating $\beta$ can be \textit{asymptotically negligible} for estimating $\mu(x)$ [@forzaniAsymptoticResultsNonparametric2024]:
 $$
-\sqrt{nh_n^d} \big\{ \hat{\mu}_{DR}({x}; \hat{\beta}_n) - \hat{\mu}_{DR}({x}; \beta) \big\} = o_P(1)
+\sqrt{nh_n^d} \big\{ \hat{\mu}_{DR}({x}; \hat{\beta}_n) - \hat{\mu}_{DR}({x}; \beta) \big\} = o_p(1)
 $$
 
-\underline{\textit{Insight}}: Estimation of $\beta$ can achieve $O_p(n^{-1/2})$ convergence, faster than the $O_p((nh^d)^{-1/2})$ rate of $\mu_{DR}(x)$.
+\underline{\textit{Insight}}: Estimation of $\beta$ can achieve $O_p(n^{-1/2})$ convergence, faster than the $O_p\{(nh^d)^{-1/2}\}$ rate of $\hat{\mu}_{DR}(x)$.
+
+## Theoretical results: subspace importance scores
+
+\underline{\textit{Problem}}: $\beta$ is not uniquely identified, so direct interpretation of loadings is tricky.
+
+\underline{\textit{Solution}}: Measure each exposure's contribution using the projection matrix, which is unique.
+$$
+\boxed{\lambda_j = e_j^\top \beta(\beta^\top \beta)^{-1}\beta^\top e_j=\big[\beta(\beta^\top \beta)^{-1}\beta^\top\big]_{jj}}
+$$
+
+- Basis invariant: unaffected by rotations in $\beta$.
+- Bounded: $0\leq\lambda_j\leq 1$
+- Decomposition: $\sum_{j=1}^p\lambda_j=d$
+
+## Summary of our work
+
+Existing approaches either
+
+- Estimated outcome regression instead of causal dose-response
+- Performed unsupervised dimension reduction that ignored causal structure
+- Conduct causal inference but on a scalar, joint shift exposure
+
+. . .
+
+Our approach builds on and combines the strengths of these previous approaches
+
+- Flexibly estimates the nonparametric dose-response in a lower dimension
+- Returns a causally and scientifically interpretable $\beta$
+- Final dose-response estimation is asymptotically robust to estimation error of $\hat{\beta}$
 
 # Simulations and Real Data
 
-## Convergence error and dimension selection
+## CSDR recovers the true $\mathcal{S}_{\mathbb{E}(Y^x)}$
+
+| Method | $n=500$ | $n=1000$ | $n=5000$ |
+|:-------|--------:|---------:|---------:|
+| **CSDR**     | 0.45 (0.39) | 0.22 (0.29) | 0.03 (0.04) |
+| pCCA       | 1.20 (0.18) | 1.10 (0.20) | 0.74 (0.20) |
+| MAVE       | 1.29 (0.17) | 1.17 (0.10) | 1.07 (0.02) |
+| PCA        | 2.00 (0.00) | 2.00 (0.00) | 2.00 (0.00) |
+
+: Frobenius norm error between estimated and true $\mathcal{S}_{\mathbb{E}(Y^x)}$ with estimated $\hat{d}$. Mean (SD). {#tbl-error}
+
+## CSDR recovers the true structural dimension
+
+| $n$ | Method | $d=1$ | $d=2$ | $d=3$ | $d=4$ |
+|:----|:-------|------:|------:|------:|------:|
+| 500  | **CSDR** | 0.03 | **0.88** | 0.07 | 0.01 |
+|      | MAVE   | 0.00 | **0.11** | 0.75 | 0.14 |
+| 5000 | **CSDR** | 0.00 | **1.00** | 0.00 | 0.00 |
+|      | MAVE   | 0.00 | **0.00** | 1.00 | 0.00 |
+
+: Proportion selecting each dimension ($d_0=2$). {#tbl-dimension}
 
 ## CSDR improves inference of the causal dose-response
 
-```{=tex}
-\begingroup
-\captionsetup{font=pfasapplication}
-```
-![Pointwise 95\% coverage for the exposure-response curve ($p=10$, $d=2$) at $100$ points; methods differ only in $\beta$ estimation.](../../results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png){#fig-simulation-coverage width="60%"}
-```{=tex}
-\endgroup
-\vspace{-0.34cm}
-```
+![Pointwise 95\% coverage for the exposure-response curve ($p=10$, $d=2$) at $100$ test points; methods differ only in $\beta$ estimation.](../../results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png){#fig-simulation-coverage width="70%"}
 
-## PFAS application
+## PFAS real data application
+
+`\newcommand{\pfasStudyCitation}{`{=tex}[@changPolyfluoroalkylSubstancePFAS2022]`}`{=tex}
 
 ::: {.columns}
 ::: {.column width="39%"}
@@ -524,7 +571,7 @@ $$
     text=textcharcoal
   ] at (0.12,7.28) {We use the \textbf{Atlanta African American
   Maternal-Child Cohort} (\(n\!=\!305\)) to study the effect of a PFAS
-  mixture (\(p\!=\!4\)) on infant birthweight. Covariates include maternal
+  mixture (\(p\!=\!4\)) on infant birthweight \pfasStudyCitation. Covariates include maternal
   age, BMI, education, tobacco use, marijuana use, and infant sex.};
 
   % Estimated results
@@ -606,14 +653,6 @@ $$
 :::
 :::
 
-<!-- SPEAKER NOTES:
-The one-dimensional result makes the joint response displayable as a curve.
-Emphasize the rug: the central region is much better supported than the extremes.
-PFOS contributes most to the subspace and PFHxS acts in the opposite direction.
-qgcomp and BKMR reached broadly compatible substantive conclusions, but their
-estimands and outputs differ.
--->
-
 ## BKMR and qgcomp comparison analysis
 
 ```{=tex}
@@ -679,13 +718,152 @@ decreasing birthweight.
 
 # Future Directions
 
-## Causal mediation analysis
+## Causal dimension reduction for mediation analysis
+
+Colleagues in EH want to study biological mechanisms of exposures using omics. 
+
+Can CSDR ideas preserve mediation effects and identify important mediators in $M$?
+\vspace{0.34cm}
+```{=tex}
+\vspace{0.10cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.49\textwidth}
+\centering
+\method{Reduction between $X$ and $M$}\\[0.12cm]
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  every node/.style={font=\small,inner sep=4pt},
+  reduced/.style={draw=emoryblue,fill=lightpanel,rounded corners=3pt,
+    text=emoryblue,minimum height=0.65cm},
+  edge/.style={->,>=stealth,thick,draw=textcharcoal}
+]
+  \path[use as bounding box] (-0.3,-0.45) rectangle (5.5,1.25);
+  \node (x) at (0.0,0) {$X$};
+  \node[reduced] (b) at (1.65,0) {$\beta^\top M$};
+  \node (m) at (3.3,0) {$M$};
+  \node (y) at (4.949999999999999,0) {$Y$};
+  \draw[edge] (x) -- (b);
+  \draw[edge] (b) -- (m);
+  \draw[edge] (m) -- (y);
+  \draw[edge] (x.north) to[bend left=25] (y.north);
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.49\textwidth}
+\centering
+\method{Reduction between $M$ and $Y$}\\[0.12cm]
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  every node/.style={font=\small,inner sep=4pt},
+  reduced/.style={draw=emoryblue,fill=lightpanel,rounded corners=3pt,
+    text=emoryblue,minimum height=0.65cm},
+  edge/.style={->,>=stealth,thick,draw=textcharcoal}
+]
+  \path[use as bounding box] (-0.3,-0.45) rectangle (5.5,1.25);
+  \node (x) at (0.0,0) {$X$};
+  \node (m) at (1.65,0) {$M$};
+  \node[reduced] (b) at (3.3,0) {$\beta^\top M$};
+  \node (y) at (4.949999999999999,0) {$Y$};
+  \draw[edge] (x) -- (m);
+  \draw[edge] (m) -- (b);
+  \draw[edge] (b) -- (y);
+  \draw[edge] (x.north) to[bend left=25] (y.north);
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\begin{center}
+\scriptsize\textcolor{secondarygray}{Confounders $C$ omitted for clarity.}
+\end{center}
+\vspace{-0.15cm}
+```
+
+\vspace{0.34cm}
+\underline{\textit{Problem}}: Preserving the mediation effect alone may not capture both the exposure–mediator and mediator–outcome relationships.
 
 ## Causal representation learning
 
-## Causal generative learning
+Can we extend CSDR from linear subspaces to **nonlinear, interpretable representations**?
 
-## Data Fusion
+Variational autoencoders offer a template for learning the encoder and decoder.
+
+```{=tex}
+\begin{center}
+\usetikzlibrary{shapes.geometric}
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  every node/.style={font=\scriptsize,align=center},
+  vaebox/.style={draw=rulegray,fill=lightpanel,rounded corners=3pt,
+    minimum width=1.85cm,minimum height=1.05cm},
+  edge/.style={->,>=stealth,thick,draw=emoryblue}
+]
+  \path[use as bounding box] (-1.05,-2.1) rectangle (11.5,0.95);
+  \node[vaebox] (input) at (0,0) {Original variables\\[0.08cm]$V=X$ or $M$};
+  \node[draw=emoryblue,fill=emoryblue!10,trapezium,
+    trapezium left angle=75,trapezium right angle=105,
+    minimum width=1.65cm,minimum height=1.15cm] (encoder) at (2.55,0)
+    {\textbf{Encoder}\\$q_\phi(Z\mid V)$};
+  \node[vaebox,draw=emoryblue,text=emoryblue] (latent) at (5.1,0)
+    {Latent sample\\[0.08cm]$Z\sim q_\phi(Z\mid V)$};
+  \node[draw=emoryblue,fill=emoryblue!10,trapezium,
+    trapezium left angle=105,trapezium right angle=75,
+    minimum width=1.65cm,minimum height=1.15cm] (decoder) at (7.65,0)
+    {\textbf{Decoder}\\$p_\theta(V\mid Z)$};
+  \node[vaebox] (output) at (10.2,0)
+    {Reconstruction\\[0.08cm]$\widetilde V$};
+  \draw[edge] (input) -- (encoder);
+  \draw[edge] (encoder) -- (latent);
+  \draw[edge] (latent) -- (decoder);
+  \draw[edge] (decoder) -- (output);
+  \node[draw=emorygolddark,fill=softgold,rounded corners=3pt,
+    text=emorygolddark,minimum width=4.5cm,minimum height=0.72cm]
+    (causal) at (5.1,-1.65)
+    {\textbf{Proposed causal objective}\\Preserve the causal estimand};
+  \draw[edge,draw=emorygolddark] (latent) -- (causal);
+\end{tikzpicture}
+\end{center}
+```
+
+\underline{\textit{Why I am excited}}: could help address many common problems in biomarker discovery including curse of dimensionality, positivity violations, and interpretability.
+
+## Data fusion for improved health surveillance
+
+In previous work [@hsiaoBloodPressureMeasurements2025;@hsiaoCountyPrevalenceAwareness2026;@vargheseNationalStateCounty2026a], we estimated county-level hypertension care cascade comparing
+
+- NHANES (national, probability)
+- BRFSS survey data (county, probability)
+- Self-service kiosk data (county, nonprobability)
+- Epic COSMOS EHR (county, nonprobability)
+
+\underline{\textit{Problem}}: Can we now combine NHANES and large convenience samples (e.g., kiosks, EHR) in an intelligent way? Can spatiotemporal dependence further improve estimates? 
+
+## Final thoughts and WFU
+
+What I bring
+
+- Interpretable causal learning and data fusion for environmental and population health.
+- Application of methods to analyze complex observational data for public health impact.
+- Engagement in interdisciplinary partnerships, teaching, and mentorship.
+
+\vspace{0.15cm}
+I would love to build this agenda at Wake Forest and contribute to its continued excellence. I am especially excited about opportunities for collaboration across the School of Medicine, Statistical Sciences, and Advocate Health.
+
+## References {.allowframebreaks}
+
+```{=tex}
+\fontsize{6}{6.5}\selectfont
+\setbeamerfont{bibliography entry author}{size=\fontsize{6}{6.5}}
+\renewenvironment{CSLReferences}[2]
+  {\begin{list}{}{%
+    \setlength{\leftmargin}{1em}%
+    \setlength{\itemindent}{-1em}%
+    \setlength{\parsep}{0pt}%
+    \setlength{\itemsep}{0pt}%
+    \setlength{\topsep}{0pt}}%
+    \fontsize{6}{6.5}\selectfont}
+  {\end{list}}
+```
+
+::: {#refs}
+:::
 
 ## Acknowledgments
 
