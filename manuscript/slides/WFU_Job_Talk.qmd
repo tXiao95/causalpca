@@ -1,0 +1,1031 @@
+---
+title: "Causal dimension reduction for environmental health"
+subtitle: 'Wake Forest University BDS Faculty Candidate Talk'
+author: 'Thomas Hsiao, Ph.D. \newline \textcolor{secondarygray}{Postdoctoral Fellow}'
+institute: 'Emory University \newline Rollins School of Public Health \newline Department of Biostatistics and Bioinformatics'
+date: 2026-11-04
+date-format: "MMMM D, YYYY"
+
+bibliography: references.bib
+
+format:
+  beamer:
+    aspectratio: 169
+    classoption: ["11pt"]
+    pdf-engine: xelatex
+
+    theme: metropolis
+    colortheme: default
+    fonttheme: default
+
+    slide-level: 2
+    section-titles: true
+    incremental: false
+    navigation: empty
+
+    keep-tex: true
+
+    include-in-header:
+      - file: emory-theme.tex
+---
+
+## Environmental mixtures analysis
+
+:::: {.columns .onlytextwidth align="center"}
+::: {.column width="55%"}
+
+How can we quantify the causal effect of complex environmental exposures?
+\vspace{0.34cm}
+
+- Air pollution mixtures (PM~2.5~, NO~2~, O~3~, $\ldots$)
+- PFAS compounds (PFOA, PFOS, PFNA, $\ldots$)
+- Metals (Pb, Cd, As, Hg, $\ldots$)
+\vspace{0.34cm}
+
+All involve multiple, highly correlated, continuous exposures
+
+:::
+::: {.column width="43%"}
+
+\includegraphics[width=\linewidth,height=5.2cm,keepaspectratio]{EHP_abstract.png}
+
+:::
+::::
+
+## Standard setup of the observed data
+
+\textbf{Observed data}: $n$-vectors $O_1,...,O_n$ sampled i.i.d. where
+$$
+O=(Y, X, C) \sim P\in \mathcal{M}
+$$
+
+- $Y\in \mathbb{R}$: outcome (binary, count, or continuous)
+- $X\in \mathbb{R}^p$: continuous exposure mixture
+- $C \in \mathbb{R}^q$: measured baseline covariates
+
+. . .
+
+\underline{\textit{Question}}: What is the value of $Y$ had we intervened and set $X=x$?
+
+## How are we currently answering this question?
+
+Let $Y^x$ be the potential outcome of $Y$ after setting $X=x$.
+
+We are interested in estimating $\mathbb{E}(Y^x)$, the \textbf{causal average dose-response}. 
+
+. . .
+
+Current methods are:
+
+::: {.incremental}
+
+- **BKMR**: Models $\mathbb{E}(Y\mid X,C)=h(X)+\gamma^\top C$ using Gaussian Process regression.
+- **PCP**: Models $\mathbb{E}(Y\mid \beta^\top X,C)=h(\beta^\top X)+\gamma^\top C$, where $\beta$ is obtained from PCA.
+- **qgcomp**: Estimates $\mathbb{E}(Y^{a+1})-\mathbb{E}(Y^a)$, where $a$ is joint quantile increase in all exposures in $X$.
+
+:::
+
+. . .
+
+\underline{\textit{Problem}}: Each has their pros and cons, but none of these are estimating $\mathbb{E}(Y^x)$.
+
+## Causal inference for continuous exposures
+
+Flexible, nonparametric, doubly robust estimators of $\mu(x) := \mathbb{E}(Y^x)$ are available.
+
+Let $m(x,c) := \mathbb{E}(Y\mid X=x,C=c)$ and
+$\pi(x\mid c) := f_{X\mid C}(x\mid c)$.
+
+. . .
+
+A kernel-based doubly robust estimator is
+$$
+\widehat{\mu}_{DR}(x)
+=
+\frac{1}{n}\sum_{i=1}^n
+\left\{
+\frac{K_h(X_i-x)}{\widehat{\pi}(X_i\mid C_i)}
+[Y_i-\widehat m(X_i,C_i)]
++\widehat m(x,C_i)
+\right\},
+$$
+
+where $K_h(u)=h^{-p}K(u/h)$, and $\widehat{m}$ and $\widehat{\pi}$ are estimated flexibly using machine learning (e.g., neural network, random forest, or ensembles). 
+
+## What can go wrong with multiple exposures?
+
+The doubly robust estimator only works well if we do a good job on $m(x,c)$ and $\pi(x\mid c)$. 
+$$
+\sqrt{nh^p} \cdot \lVert \widehat{m}-m\rVert\cdot \lVert\widehat{\pi} - \pi\rVert \xrightarrow{p} 0.
+$$
+
+. . .
+
+For large $p$, fitting a $(p+q)$-regression and a $p$-variate density with $q$ regressors is hard. 
+
+. . .
+
+\underline{\textit{Solution}}: Consider estimating the average dose-response in a lower dimensional space.
+$$
+\mathbb{E}(Y^x)=g(\beta^\top x), \qquad \beta \in \mathbb{R}^{p \times d}.
+$$
+
+## Sufficient dimension reduction (SDR)
+
+There exists a rich literature on estimating $\beta$ that preserves the \textit{regression} relationship:
+$$
+\mathbb{E}(Y\mid X) = g(\beta^\top X).
+$$
+Since $\beta$ is not uniquely identified, the statistical estimand is the \textbf{central mean subspace}, $\mathcal{S}_{\mathbb{E}(Y\mid X)}$, the smallest subspace satisfying this identity. 
+
+. . .
+
+Once $\mathcal{S}_{\mathbb{E}(Y\mid X)}$ is estimated, we can then 
+
+1. Define new exposure $Z:=\hat{\beta}^\top X \in \mathbb{R}^d$ where $d<p$.
+2. Estimate $p$-dimensional $\mathbb{E}(Y\mid X)$ in $d$ dimensions using $\mathbb{E}(Y\mid Z)$.
+
+. . .
+
+\underline{\textit{Problem}}: Because $\mathbb{E}(Y^x) \neq \mathbb{E}(Y\mid X=x)$ due to confounding, we cannot directly use regression SDR for our causal dose-response. 
+
+## Ideal workflow of causal sufficient dimension reduction
+
+Let $\mathbb{E}(Y^x)=g(\beta^\top x)$ and $\mathcal{S}_{\mathbb{E}(Y^x)}$ be the **causal central mean subspace** (CCMS).
+
+\vspace{0.20cm}
+
+```{=tex}
+\begin{center}
+\begin{tikzpicture}[x=0.92cm,y=1.20cm]
+  % Keep all stage titles and mathematical subtitles on shared baselines.
+  \def\stageheadingy{2.92}
+  \def\stagesubheadingy{2.57}
+
+  % Stage headings and subtitles
+  \uncover<2->{
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (1.35,\stageheadingy) {1. Exposures ($p$)};
+  \node[font=\scriptsize,text=secondarygray] at (1.35,\stagesubheadingy)
+    {$X\in\mathbb{R}^p$};
+  }
+  \uncover<3->{
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (5.45,\stageheadingy) {2. Causal directions};
+  \node[font=\scriptsize,text=secondarygray] at (5.45,\stagesubheadingy)
+    {$\beta\in\mathbb{R}^{p\times d}$};
+  }
+  \uncover<4->{
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (9.20,\stageheadingy) {3. Reduced ($d$)};
+  \node[font=\scriptsize,text=secondarygray] at (9.20,\stagesubheadingy)
+    {$Z=\beta^\top X\in\mathbb{R}^d$};
+  }
+  \uncover<5->{
+  \node[font=\sffamily\bfseries\normalsize,text=emoryblue]
+    at (13.35,\stageheadingy) {4. Flexible response};
+  \node[font=\scriptsize,text=secondarygray] at (13.35,\stagesubheadingy)
+    {$\mathbb{E}(Y^x)=g(z)$};
+  }
+
+  % 1. Exposure bars. A single color denotes a common object type;
+  % no artificial ordering or exposure-level differences are implied.
+  \uncover<2->{
+  \fill[emoryblue!78!white] (0.03,0.64) rectangle ++(0.30,1.20);
+  \fill[emoryblue!78!white] (0.67,0.64) rectangle ++(0.30,1.20);
+  \fill[emoryblue!78!white] (1.31,0.64) rectangle ++(0.30,1.20);
+  \fill[emoryblue!78!white] (2.43,0.64) rectangle ++(0.30,1.20);
+  \node[font=\scriptsize,text=secondarygray] at (2.02,1.22) {$\cdots$};
+  \node[font=\scriptsize] at (0.18,2.05) {$X_1$};
+  \node[font=\scriptsize] at (0.82,2.05) {$X_2$};
+  \node[font=\scriptsize] at (1.46,2.05) {$X_3$};
+  \node[font=\scriptsize] at (2.58,2.05) {$X_p$};
+  \draw[secondarygray,line width=0.45pt]
+    (0.02,0.50) -- (0.02,0.40) -- (2.74,0.40) -- (2.74,0.50);
+  \node[font=\tiny,text=secondarygray] at (1.38,0.14) {$p$ exposures};
+  }
+
+  % 2. Loading heatmap: columns are causal directions
+  \uncover<3->{
+  \begin{scope}[yshift=-0.14cm]
+  \node[font=\scriptsize] at (4.55,2.32) {$\beta_1$};
+  \node[font=\scriptsize] at (5.15,2.32) {$\beta_2$};
+  \node[font=\scriptsize] at (5.75,2.32) {$\cdots$};
+  \node[font=\scriptsize] at (6.35,2.32) {$\beta_d$};
+  \node[font=\scriptsize] at (3.90,1.965) {$X_1$};
+  \node[font=\scriptsize] at (3.90,1.555) {$X_2$};
+  \node[font=\scriptsize] at (3.90,1.145) {$X_3$};
+  \node[font=\scriptsize] at (3.90,0.735) {$\vdots$};
+  \node[font=\scriptsize] at (3.90,0.325) {$X_p$};
+
+  \fill[emoryblue!85!white] (4.25,1.76) rectangle ++(0.60,0.41);
+  \fill[emorygold!45!white] (4.85,1.76) rectangle ++(0.60,0.41);
+  \fill[lightpanel] (5.45,1.76) rectangle ++(0.60,0.41);
+  \fill[emoryblue!45!white] (6.05,1.76) rectangle ++(0.60,0.41);
+  \fill[emorygold!55!white] (4.25,1.35) rectangle ++(0.60,0.41);
+  \fill[emoryblue!20!white] (4.85,1.35) rectangle ++(0.60,0.41);
+  \fill[emoryblue!65!white] (5.45,1.35) rectangle ++(0.60,0.41);
+  \fill[emoryblue!90!white] (6.05,1.35) rectangle ++(0.60,0.41);
+  \fill[emoryblue!35!white] (4.25,0.94) rectangle ++(0.60,0.41);
+  \fill[emorygold!75!white] (4.85,0.94) rectangle ++(0.60,0.41);
+  \fill[emoryblue!25!white] (5.45,0.94) rectangle ++(0.60,0.41);
+  \fill[emorygold!35!white] (6.05,0.94) rectangle ++(0.60,0.41);
+  \fill[lightpanel] (4.25,0.53) rectangle ++(0.60,0.41);
+  \fill[emoryblue!55!white] (4.85,0.53) rectangle ++(0.60,0.41);
+  \fill[emorygold!60!white] (5.45,0.53) rectangle ++(0.60,0.41);
+  \fill[emoryblue!30!white] (6.05,0.53) rectangle ++(0.60,0.41);
+  \fill[emorygold!90!white] (4.25,0.12) rectangle ++(0.60,0.41);
+  \fill[emorygold!55!white] (4.85,0.12) rectangle ++(0.60,0.41);
+  \fill[emoryblue!75!white] (5.45,0.12) rectangle ++(0.60,0.41);
+  \fill[emoryblue!45!white] (6.05,0.12) rectangle ++(0.60,0.41);
+  \draw[secondarygray,line width=0.55pt,rounded corners=1pt]
+    (4.25,0.12) rectangle (6.65,2.17);
+  \foreach \x in {4.85,5.45,6.05}
+    \draw[white,line width=0.45pt] (\x,0.12) -- (\x,2.17);
+  \foreach \y in {0.53,0.94,1.35,1.76}
+    \draw[white,line width=0.45pt] (4.25,\y) -- (6.65,\y);
+  \node[font=\tiny,text=secondarygray] at (5.45,-0.02)
+    {$p\times d$ loadings matrix};
+  \end{scope}
+  }
+
+  % 3. Reduced causal scores
+  \uncover<4->{
+  \node[
+    draw=emorygold,
+    fill=softgold,
+    rounded corners=2pt,
+    inner xsep=0.13cm,
+    inner ysep=0.08cm,
+    font=\scriptsize
+  ] at (9.20,1.76) {$Z_1=\beta_1^\top X$};
+  \node[font=\scriptsize,text=secondarygray] at (9.20,1.25) {$\vdots$};
+  \node[
+    draw=emorygold,
+    fill=softgold,
+    rounded corners=2pt,
+    inner xsep=0.13cm,
+    inner ysep=0.08cm,
+    font=\scriptsize
+  ] at (9.20,0.75) {$Z_d=\beta_d^\top X$};
+  \draw[secondarygray,line width=0.45pt]
+    (8.31,0.42) -- (8.31,0.32) -- (10.09,0.32) -- (10.09,0.42);
+  \node[font=\tiny,text=secondarygray] at (9.20,0.10) {$d\ll p$ summaries};
+  }
+
+  % 4. Flexible response curve
+  \uncover<5->{
+  \draw[->,textcharcoal,line width=0.70pt] (12.05,0.54) -- (14.70,0.54);
+  \draw[->,textcharcoal,line width=0.70pt] (12.05,0.54) -- (12.05,2.10);
+  \node[font=\tiny] at (14.80,0.48) {$z$};
+  \node[font=\tiny] at (11.90,2.17) {$g(z)$};
+  \fill[emoryblue!15!white]
+    (12.20,0.98)
+    .. controls (12.70,1.12) and (12.95,1.98) .. (13.48,1.86)
+    .. controls (13.89,1.76) and (14.05,1.02) .. (14.58,1.70)
+    -- (14.58,1.30)
+    .. controls (14.02,0.70) and (13.88,1.46) .. (13.48,1.58)
+    .. controls (12.95,1.72) and (12.70,0.80) .. (12.20,0.62)
+    -- cycle;
+  \draw[emoryblue,line width=1.10pt]
+    (12.20,0.80)
+    .. controls (12.70,0.95) and (12.95,1.86) .. (13.48,1.72)
+    .. controls (13.88,1.61) and (14.03,0.86) .. (14.58,1.50);
+  \node[font=\tiny,text=secondarygray] at (13.38,0.18) {shown for $d=1$};
+  }
+
+  % Flow arrows
+  \uncover<3->{
+  \draw[->,secondarygray,line width=0.90pt] (2.88,1.29) -- (3.43,1.29);
+  }
+  \uncover<4->{
+  \draw[->,secondarygray,line width=0.90pt] (6.85,1.29) -- (7.60,1.29);
+  }
+  \uncover<5->{
+  \draw[->,secondarygray,line width=0.90pt] (10.52,1.29) -- (11.48,1.29);
+  }
+\end{tikzpicture}
+\end{center}
+```
+
+\vspace{0.34cm}
+
+\begin{uncoverenv}<6->
+\begin{center}
+\underline{\textit{Question}}: How can we estimate $\mathcal{S}_{\mathbb{E}(Y^x)}$ when $\mathbb{E}(Y^x)=g(\beta^\top x)$?
+\end{center}
+\end{uncoverenv}
+
+# Estimation
+
+## Marginal structural model approach
+
+Using the theory of marginal structural models (Robins, 2000), Nabi et al. (2022) proposed estimating $\mathcal{S}_{\mathbb{E}(Y^x)}$ by solving the following efficient score:
+
+$$
+\begin{aligned}
+0={}&\frac{1}{n}\sum_{i=1}^n
+\Bigg[
+\frac{\pi^*(X_i)}{\pi(X_i\mid C_i)}
+\Big\{Y_i-\mathbb E(Y\mid X_i,C_i)\Big\}
+\\
+&\quad\times
+\Big\{\alpha(X_i)
+-\mathbb E_q[\alpha(X)\mid\beta^\top X=\beta^\top X_i]\Big\}
+\\[6pt]
+&\quad+
+\int_{\mathcal X}
+\Big\{\mathbb E(Y\mid X=x,C_i)
+-\mathbb E_q[Y\mid\beta^\top X=\beta^\top x]\Big\}
+\\
+&\quad\times
+\Big\{\alpha(x)
+-\mathbb E_q[\alpha(X)\mid\beta^\top X=\beta^\top x]\Big\}
+\pi^*(x)\,dx
+\Bigg].
+\end{aligned}
+$$
+
+## Marginal structural model approach difficulties
+
+While the method is elegant, practical implementation is difficult.
+
+. . .
+
+Nuisance functions to be estimated:
+
+1. $m(x,c):= \mathbb{E}(Y\mid X, C)$
+2. $\pi(x\mid c):= f_{X\mid C}(x\mid c)$
+3. \textcolor<3->{red}{$\mathbb{E}_q(Y\mid\beta^\top X=z)$}
+4. \textcolor<3->{red}{$\mathbb{E}_q[\alpha(X)\mid\beta^\top X=z]$}
+
+. . .
+
+\underline{\textit{Problem}}: Optimization is challenging when the parameter is matrix-valued and nuisance functions must be re-estimated at each iteration of $\beta$.
+
+## A simpler approach: recast the dose-response as a regression
+
+Suppose we can construct a variable $\widetilde{Y}$ such that 
+$$
+\mathbb{E}(\widetilde{Y} \mid X=x) = \mathbb{E}(Y^x), \qquad \forall x\in \mathcal{X}.
+$$
+
+. . .
+
+Then under our central assumption $\mathbb{E}(Y^x)=g(\beta^\top x)$, it follows that 
+$$
+\mathcal{S}_{\mathbb{E}(\widetilde{Y} \mid X)} = \mathcal{S}_{\mathbb{E}(Y^x)}. 
+$$
+
+. . .
+
+\underline{\textit{Solution}}: Just run standard SDR for regression on $(\widetilde{Y}, X)$ to estimate the causal $\mathcal{S}_{\mathbb{E}(Y^x)}$!
+
+## Estimation of $\widetilde{Y}$
+
+Two possible approaches:
+
+1. Causal dose-response:
+   $$\widetilde{Y}=\mu(X).$$
+2. Doubly robust pseudo-outcome:
+   $$
+   \widetilde{Y}=\xi=
+   \frac{\pi(X)}{\pi(X\mid C)}
+   \{Y-m(X,C)\}
+   +\mathbb{E}_C[m(X,C)].
+   $$
+
+Both require estimation of the same nuisances $m(x,c)=\mathbb{E}(Y\mid X=x,C=c)$ and $\pi(x\mid c)=f_{X\mid C}(x\mid c)$.
+
+## Estimation of $\mathcal{S}_{\mathbb{E}(Y\mid X)}$ with MAVE
+
+The minimum average variance estimator (MAVE) from Xia et al. (2002) estimates $\beta$ and $\mathcal{S}_{\mathbb{E}(Y\mid X)}$ through a variation of local linear regression.
+\begin{align*}
+  \min_{\beta^\top\beta = I_d,\; \{a_j,{b}_j\}}
+  \sum_{j=1}^n \sum_{i=1}^n 
+  \Big(Y_i - \{a_j +   {b}_j^\top \beta^\top ({X}_i - {X}_j)\}\Big)^2 w_{ij}
+\end{align*}
+
+where $w_{ij} = K_h(X_i-X_j) / \sum^n_{\ell=1} K_h(X_i - X_\ell)$. 
+
+## Our CSDR Approach
+
+**CSDR Algorithm**:
+
+1. Use $O=(Y,X,C)$ to estimate $\widetilde{Y}$
+2. Estimate $\mathcal{S}_{\mathbb{E}(Y^x)}$ by running MAVE on $(\widetilde{Y}, X)$
+3. Estimate $\mu(x)$ by replacing $X$ with $Z:=\hat{\beta}^\top X$
+
+$$
+\widehat{\mu}_{DR,\widehat{\beta}}(z)
+=
+\frac{1}{n}\sum_{i=1}^n
+\left\{
+\frac{K_h(\widehat Z_i-z)}
+{\widehat{\pi}_{\widehat{\beta}}(\widehat Z_i\mid C_i)}
+\left[Y_i-\widehat m_{\widehat{\beta}}(\widehat Z_i,C_i)\right]
++\widehat m_{\widehat{\beta}}(z,C_i)
+\right\},
+$$
+
+## Alternative approach
+
+The CSDR approach improves on the MSM approach by avoiding numerical optimization on $\beta$-dependent nuisances.
+
+\vspace{0.4cm}
+
+However, estimation of $\widetilde{Y}$ still involves nuisance estimation of $m(x,c)$ and $\pi(x\mid c)$.
+
+\vspace{0.4cm}
+
+We propose another alternative that can estimate $\mathcal{S}_{\mathbb{E}(Y^x)}$ without $m(x,c)$ and $\pi(x\mid c)$.
+
+## Partial dimension reduction on $\mathbb{E}(Y\mid X,C)$
+
+For this approach, we make an additional assumption that
+$$
+\mathbb{E}(Y^x \mid C=c) = g(\beta^\top x, c).
+$$
+One can show that any $\beta$ satisfying the above also satisfies our original central assumption:
+$$
+\mathbb{E}(Y^x) = g(\beta^\top x).
+$$
+It follows that the partial central mean subspace of $Y$ given $(X, C)$ is equal to $\mathcal{S}_{\mathbb{E}(Y^x)}$. 
+
+. . .
+
+\vspace{0.34cm}
+
+\underline{\textit{Solution}}: Run partial dimension reduction directly on the regression $\mathbb{E}(Y\mid X,C)$.
+
+## Theoretical results
+
+Let $\delta_n=\sqrt{{\log n} / ({nh^p})}$ and $R_n=\lVert \hat{\mu}(X)- \mu(X)\rVert_\infty$ (the error in estimating $\widetilde{Y}$).
+
+. . .
+
+\vspace{0.34cm}
+1. **Subspace estimation**: We establish convergence rates for estimating $\mathcal{S}_{\mathbb{E}(Y^x)}$:
+
+- Method 1: $\lVert \hat{\beta} - \beta\rVert = O_p(h^3+h\delta_n+h^{-1}R_n)$
+- Method 2: $\lVert \hat{\beta} - \beta\rVert = O_p(h^3+h\delta_n+h^{-1}\delta_n^2)$
+
+. . .
+
+\vspace{0.34cm}
+2. **Structural dimension selection**: A cross-validation procedure based on MAVE consistently estimates the dimension of $\mathcal{S}_{\mathbb{E}(Y^x)}$. 
+$$
+\mathbb{P}(\widehat d=d_0)\longrightarrow 1.
+$$
+
+## Theoretical results
+
+One may wonder how estimating $\mu(x)=\mathbb{E}(Y^x)$ using $\hat{\beta}_n$ compares to the true $\beta$. 
+
+We show that the error from estimating $\beta$ can be asymptotically negligible:
+
+$$
+\sqrt{nh_n^d} \big\{ \hat{\mu}_{DR}({x}; \hat{\beta}_n) - \hat{\mu}_{DR}({x}; \beta) \big\} = o_P(1)
+$$
+
+\underline{\textit{Insight}}: Estimation of $\beta$ can achieve $O_p(n^{-1/2})$ convergence, faster than the $O_p((nh^d)^{-1/2})$ rate of $\mu_{DR}(x)$.
+
+# Simulations and Real Data
+
+## Convergence error and dimension selection
+
+## CSDR improves inference of the causal dose-response
+
+```{=tex}
+\begingroup
+\captionsetup{font=pfasapplication}
+```
+![Pointwise 95\% coverage for the exposure-response curve ($p=10$, $d=2$) at $100$ points; methods differ only in $\beta$ estimation.](../../results/jasa-initial-submission/main_paper_final_results_nnet/interaction/Simulation_Coverage.png){#fig-simulation-coverage width="60%"}
+```{=tex}
+\endgroup
+\vspace{-0.34cm}
+```
+
+## PFAS application
+
+::: {.columns}
+::: {.column width="39%"}
+```{=tex}
+\centering
+\begin{tikzpicture}[x=0.46cm,y=0.72cm]
+  \path[use as bounding box] (0,0) rectangle (12.00,7.42);
+
+  % Study setup
+  \node[
+    anchor=north west,
+    text width=5.30cm,
+    align=left,
+    font=\sffamily\fontsize{7.0}{8.4}\selectfont,
+    text=textcharcoal
+  ] at (0.12,7.28) {We use the \textbf{Atlanta African American
+  Maternal-Child Cohort} (\(n\!=\!305\)) to study the effect of a PFAS
+  mixture (\(p\!=\!4\)) on infant birthweight. Covariates include maternal
+  age, BMI, education, tobacco use, marijuana use, and infant sex.};
+
+  % Estimated results
+  \filldraw[
+    fill=lightpanel!68!white,
+    draw=rulegray,
+    line width=0.60pt,
+    rounded corners=4pt
+  ] (0.10,0.10) rectangle (11.90,4.10);
+
+  % Estimated summary
+  \node[
+    anchor=west,
+    font=\sffamily\bfseries\tiny,
+    text=emoryblue
+  ] at (0.48,3.77) {ESTIMATED REDUCTION \((\widehat d=1)\)};
+  \node[
+    font=\sffamily\tiny,
+    text=textcharcoal,
+    anchor=base east
+  ] at (3.15,3.28) {\(\widehat{\mathsf{Z}}=\)};
+  \node[
+    font=\sffamily\tiny,
+    text=textcharcoal,
+    anchor=base west
+  ] at (3.15,3.28)
+    {\(0.77\,\text{PFOS}+0.14\,\text{PFOA}+\)};
+  \node[
+    font=\sffamily\tiny,
+    text=textcharcoal,
+    anchor=base west
+  ] at (3.15,2.79)
+    {\(0.26\,\text{PFNA}-0.56\,\text{PFHxS}\)};
+  \draw[rulegray,line width=0.45pt] (0.48,2.40) -- (11.52,2.40);
+
+  % SIS lollipop report
+  \node[
+    anchor=west,
+    font=\sffamily\bfseries\tiny,
+    text=emoryblue
+  ] at (0.48,2.12) {SUBSPACE IMPORTANCE SCORE \(\widehat\lambda_j\)};
+
+  \foreach \y in {1.76,1.37,0.98,0.59} {
+    \draw[rulegray,line width=0.55pt] (3.25,\y) -- (9.65,\y);
+  }
+  \node[font=\tiny,text=textcharcoal,anchor=east] at (2.78,1.76) {PFOS};
+  \node[font=\tiny,text=textcharcoal,anchor=east] at (2.78,1.37) {PFOA};
+  \node[font=\tiny,text=textcharcoal,anchor=east] at (2.78,0.98) {PFNA};
+  \node[font=\tiny,text=textcharcoal,anchor=east] at (2.78,0.59) {PFHxS};
+
+  \draw[emoryblue!58!white,line width=2.00pt] (3.25,1.76) -- (7.09,1.76);
+  \fill[emoryblue] (7.09,1.76) circle[radius=1.35pt];
+  \node[font=\tiny,text=secondarygray,anchor=west] at (9.95,1.76) {0.60};
+
+  \draw[emoryblue!58!white,line width=2.00pt] (3.25,1.37) -- (3.38,1.37);
+  \fill[emoryblue] (3.38,1.37) circle[radius=1.35pt];
+  \node[font=\tiny,text=secondarygray,anchor=west] at (9.95,1.37) {0.02};
+
+  \draw[emoryblue!58!white,line width=2.00pt] (3.25,0.98) -- (3.70,0.98);
+  \fill[emoryblue] (3.70,0.98) circle[radius=1.35pt];
+  \node[font=\tiny,text=secondarygray,anchor=west] at (9.95,0.98) {0.07};
+
+  \draw[emoryblue!58!white,line width=2.00pt] (3.25,0.59) -- (5.23,0.59);
+  \fill[emoryblue] (5.23,0.59) circle[radius=1.35pt];
+  \node[font=\tiny,text=secondarygray,anchor=west] at (9.95,0.59) {0.31};
+\end{tikzpicture}
+```
+:::
+
+::: {.column width="58%"}
+```{=tex}
+\begingroup
+\captionsetup{font=pfasapplication}
+```
+![PFAS exposure-response curve from ATL-AA](../../results/jasa-initial-submission/ATL-AA/ers_causal_no_title_main_paper.pdf){width="90%"}
+```{=tex}
+\endgroup
+```
+:::
+:::
+
+<!-- SPEAKER NOTES:
+The one-dimensional result makes the joint response displayable as a curve.
+Emphasize the rug: the central region is much better supported than the extremes.
+PFOS contributes most to the subspace and PFHxS acts in the opposite direction.
+qgcomp and BKMR reached broadly compatible substantive conclusions, but their
+estimands and outputs differ.
+-->
+
+## BKMR and qgcomp comparison analysis
+
+```{=tex}
+\vspace{-0.10cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.465\linewidth}
+\begin{block}{BKMR}
+\begin{minipage}[t][4.55cm][t]{\linewidth}
+\begin{minipage}[c][3.75cm][c]{\linewidth}
+\centering
+\includegraphics[
+  width=0.96\linewidth,
+  height=3.45cm,
+  keepaspectratio
+]{../../results/jasa-initial-submission/ATL-AA/bkmr_diff.pdf}
+\end{minipage}
+
+\vspace{0.04cm}
+
+\begin{minipage}[c][0.52cm][c]{\linewidth}
+\centering
+{\scriptsize\color{secondarygray}
+All four PFAS share a quantile versus the median.}
+\end{minipage}
+\end{minipage}
+\end{block}
+\end{column}
+
+\hfill
+
+\begin{column}{0.465\linewidth}
+\begin{block}{qgcomp}
+\begin{minipage}[t][4.55cm][t]{\linewidth}
+\begin{minipage}[c][3.75cm][c]{\linewidth}
+\centering
+\includegraphics[
+  width=0.96\linewidth,
+  height=3.45cm,
+  keepaspectratio
+]{../../results/jasa-initial-submission/ATL-AA/qgcomp.pdf}
+\end{minipage}
+
+\vspace{0.04cm}
+
+\begin{minipage}[c][0.52cm][c]{\linewidth}
+\centering
+{\scriptsize\color{secondarygray}
+All four PFAS shift together across exposure quartiles.}
+\end{minipage}
+\end{minipage}
+\end{block}
+\end{column}
+\end{columns}
+
+\vspace{0.12cm}
+
+\begin{center}
+\scriptsize
+\method{Takeaway:} Different estimands, but in general, increasing PFAS leads to
+decreasing birthweight.
+\end{center}
+```
+
+# Future Directions
+
+## Causal mediation analysis
+
+## Causal representation learning
+
+## Causal generative learning
+
+## Data Fusion
+
+## Acknowledgments
+
+```{=tex}
+\centering
+\large
+
+\method{Postdoctoral advisors}\\[0.16cm]
+\textbf{Howard Chang}
+\hspace{0.28cm}\raisebox{-0.08cm}{\color{emorygold}\rule{0.8pt}{0.38cm}}\hspace{0.28cm}
+\textbf{Razieh Nabi}\\[0.12cm]
+\small For their mentorship, guidance, and support.
+
+\vspace{0.36cm}
+{\color{rulegray}\rule{0.72\linewidth}{0.6pt}}
+\vspace{0.32cm}
+
+\large
+\method{Collaborators}\\[0.16cm]
+\textbf{Anne Dunlop}
+\hspace{0.18cm}\raisebox{-0.08cm}{\color{emorygold}\rule{0.8pt}{0.38cm}}\hspace{0.18cm}
+\textbf{Stephanie Eick}
+\hspace{0.18cm}\raisebox{-0.08cm}{\color{emorygold}\rule{0.8pt}{0.38cm}}\hspace{0.18cm}
+\textbf{Donghai Liang}
+\hspace{0.18cm}\raisebox{-0.08cm}{\color{emorygold}\rule{0.8pt}{0.38cm}}\hspace{0.18cm}
+\textbf{Youran Tan}\\[0.14cm]
+\small For sharing the ATL-AA cohort data and for their thoughtful discussions.
+```
+
+## Questions?
+
+\centering
+\vspace{0.18cm}
+
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.46\textwidth}
+\centering
+\href{https://arxiv.org/abs/2606.14840}{%
+  \includegraphics[height=0.72cm]{assets/arxiv-logo.png}}\\[0.13cm]
+\href{https://arxiv.org/abs/2606.14840}{%
+  \includegraphics[width=3.05cm]{assets/qr-arxiv.png}}\\[0.10cm]
+\textbf{CSDR preprint}\\[-0.01cm]
+\href{https://arxiv.org/abs/2606.14840}{%
+  \scriptsize\texttt{arxiv.org/abs/2606.14840}}
+\end{column}
+
+\begin{column}{0.46\textwidth}
+\centering
+\href{https://github.com/tXiao95/csdr}{%
+  \includegraphics[height=0.72cm]{assets/github-invertocat.png}}\\[0.13cm]
+\href{https://github.com/tXiao95/csdr}{%
+  \includegraphics[width=3.05cm]{assets/qr-github.png}}\\[0.10cm]
+\textbf{\texttt{csdr} R package}\\[-0.01cm]
+\href{https://github.com/tXiao95/csdr}{%
+  \scriptsize\texttt{github.com/tXiao95/csdr}}
+\end{column}
+\end{columns}
+
+<!-- SPEAKER NOTES:
+Leave this slide visible for questions so audience members have time to scan. The
+left QR code opens the arXiv abstract page; the right opens the csdr repository.
+-->
+
+```{=tex}
+\csdrrecordappendixboundary
+```
+
+# Appendix
+
+## Setup outcome, exposures, and confounders {.t}
+
+::: {.columns}
+::: {.column width="40%"}
+\method{R code}
+
+\workflowcodefont
+
+```r
+library(csdr)
+data(csdr_example2)
+
+Y <- csdr_example2$Y
+A <- csdr_example2$A
+C <- csdr_example2$C
+
+head(Y, 5)
+head(A[, c(1:3, 18:20)], 5)
+head(C, 5)
+```
+:::
+
+::: {.column width="56%"}
+\method{Console}
+
+\workflowcodefont
+
+```text
+> head(Y, 5)
+     obs1      obs2      obs3      obs4      obs5
+  0.3805    0.1838   -2.0486    0.4977    5.4798
+
+> head(A[, c(1:3, 18:20)], 5)
+         A1     A2     A3    A18    A19    A20
+obs1 -1.066  1.573  0.953  0.033 -0.480  0.500
+obs2 -1.028  0.325 -0.364 -0.967 -1.543 -0.572
+obs3 -0.800 -0.103 -0.433 -0.011  0.505  0.623
+obs4  2.492  0.582 -1.134 -1.473 -1.138  1.551
+obs5  1.733 -0.114  0.615  1.083  0.350  0.133
+
+> head(C, 5)
+         C1    C2     C3     C4     C5
+obs1 -0.935 1.312 -0.294 -1.979  1.150
+obs2 -0.694 0.531  0.367 -2.259 -1.293
+obs3 -0.548 0.712 -0.088 -0.407  1.828
+obs4  0.766 1.050 -0.498 -0.593 -0.604
+obs5  1.852 -0.554  0.849  0.643 -0.312
+```
+:::
+:::
+
+<!-- SPEAKER NOTES:
+Install the development package once with
+remotes::install_github("tXiao95/csdr"). The package example is deliberately small
+and reproducible: 100 observations, 20 continuous exposures, and five continuous
+covariates; the console shows the first and final three exposure columns. In an
+applied analysis, model.matrix can encode categorical covariates. The package requires
+finite numeric inputs with unique, nonoverlapping column names; it does not transform
+exposures or choose the causal adjustment set.
+-->
+
+## Fit the causal subspace {.t}
+
+::: {.columns}
+::: {.column width="40%"}
+\method{R code}
+
+\workflowcodefont
+
+```r
+sl_lib <- c(
+  "SL.glm", "SL.earth", "SL.ranger"
+)
+
+learners <- csdr_learners(
+  sl_library = sl_lib
+)
+
+set.seed(42)
+fit <- csdr(
+  Y = Y, A = A, C = C,
+  L = 5, seed = 42,
+  learners = learners,
+  max_dim = 5,
+  keep_nuisance = TRUE
+)
+
+summary(fit)
+```
+:::
+
+::: {.column width="56%"}
+\method{Console}
+
+\workflowcodefont
+
+```text
+> summary(fit)
+Summary of causal sufficient dimension reduction fit
+
+ variant d_hat  n p mave_method target_exposure
+      DR     2 100 20   meanMAVE               A
+
+Learners:
+ outcome: SuperLearner regression
+   family: gaussian
+   SL.library: SL.glm, SL.earth, SL.ranger
+ gps: MVN GPS with linear conditional mean
+   method_gps: linear; density_floor: 1e-16
+
+Target construction:
+Effective folds: 5
+PO marginalization: crossfit
+```
+:::
+:::
+
+<!-- SPEAKER NOTES:
+Teach the public high-level interface. The omitted arguments use the package defaults:
+the DR construction is fitted and the dimension is estimated from the data. The
+SuperLearner library combines a generalized linear model, multivariate adaptive
+regression splines, and a random forest. keep_nuisance=TRUE supports later diagnostics
+but makes the saved object larger. max_dim=5 limits the candidate structural
+dimensions. Point out the seed and folds because reproducibility matters.
+-->
+
+## Inspect the fitted subspace and scores {.t}
+
+::: {.columns}
+::: {.column width="40%"}
+\method{R code}
+
+\workflowcodefont
+
+```r
+B_hat <- coef(fit)
+Z_hat <- scores(fit)
+
+mave <- mave_fits(fit)
+dim_selection <- mave$dimension_selection
+
+B_hat[c(1, 2, 20), , drop = FALSE]
+sis(fit)
+head(Z_hat, 2)
+dim_selection
+```
+:::
+
+::: {.column width="56%"}
+\method{Console}
+
+\workflowcodefont
+
+```text
+> B_hat[c(1, 2, 20), , drop = FALSE]
+       dir1    dir2
+A1 -0.3401  0.5777
+A2 -0.3524  0.4195
+A20 -0.0521 0.0784
+
+> sis(fit)
+    A1    A2    A3    A4    A5    A6    A7    A8    A9   A10
+ 0.464 0.312 0.533 0.390 0.000 0.004 0.002 0.020 0.001 0.021
+   A11   A12   A13   A14   A15   A16   A17   A18   A19   A20
+ 0.068 0.059 0.028 0.020 0.006 0.005 0.015 0.036 0.006 0.009
+
+> head(Z_hat, 2)
+       score1  score2
+obs1  -0.1862  0.4515
+obs2   1.5224 -0.3484
+
+> dim_selection
+Dimensions      0    1    2    3    4    5
+CV-value     1.58 1.13 0.75 0.77 0.92 0.97
+Selected dimension: 2
+```
+:::
+:::
+
+<!-- SPEAKER NOTES:
+Use the package accessors instead of reaching inside the raw MAVE object. The selected
+dimension appears in summary(fit), while mave_fits exposes the raw MAVE selection
+object and its cross-validation values. coef(fit) returns the estimated basis and
+scores(fit) returns the reduced exposure values. sis(fit) reports how strongly each
+original exposure is represented in the fitted subspace; its values sum to d-hat.
+This example correctly selects d-hat = 2.
+-->
+
+## Estimate the response in the reduced exposure {.t}
+
+::: {.columns}
+::: {.column width="40%"}
+\method{R code}
+
+\workflowcodefont
+
+```r
+z_grid <- matrix(
+  rep(apply(Z_hat, 2, median), each = 50),
+  nrow = 50,
+  dimnames = list(NULL, colnames(Z_hat))
+)
+z_grid[, 1] <- seq(
+  quantile(Z_hat[, 1], 0.05),
+  quantile(Z_hat[, 1], 0.95),
+  length.out = 50
+)
+
+ers <- estimate_ers(
+  Y = Y, A = Z_hat, C = C,
+  a_eval = z_grid, estimator = "DR",
+  L = 5, seed = 42,
+  verbose = FALSE
+)
+
+head(ers$results)
+```
+:::
+
+::: {.column width="56%"}
+\method{Console}
+
+\workflowcodefont
+
+```text
+> head(ers$results)
+  score1 score2 estimate     se ci_lower ci_upper effective_n
+1 -1.990 0.0015    2.676 0.5599    1.579    3.774       4.502
+2 -1.912 0.0015    2.693 0.4762    1.760    3.627       4.559
+3 -1.834 0.0015    2.703 0.3920    1.935    3.472       4.671
+4 -1.756 0.0015    2.703 0.3136    2.088    3.317       4.851
+5 -1.678 0.0015    2.687 0.2493    2.198    3.176       5.113
+6 -1.601 0.0015    2.652 0.2100    2.241    3.064       5.476
+    min_gps h_used_1 h_used_2
+1 4.049e-05    0.578    0.596
+2 4.049e-05    0.578    0.596
+3 4.049e-05    0.578    0.596
+4 4.049e-05    0.578    0.596
+5 4.049e-05    0.578    0.596
+6 4.049e-05    0.578    0.596
+```
+:::
+:::
+
+## Dimension Selection
+
+**NW leave-one-out estimator**
+$$
+\hat{a}_{d0,j}
+=
+\frac{\sum_{i\neq j} K^{(i,j)}_{h_d} \tilde{Y_i}}
+{\sum_{i\neq j} K^{(i,j)}_{h_d}},
+K^{(i,j)}_{h_d}
+=
+K_{h_d}\{\hat{\beta}_1^\top(\tilde{X}_i-\tilde{X}_j),\dots,\hat{\beta}_d^\top(\tilde{X}_i-\tilde{X}_j)\}
+$$
+
+**Cross-validated error**
+$$
+\text{CV}_n(d)
+=
+\frac{1}{n}\sum_{j=1}^{n}
+\big(\tilde{Y}_j-\hat{a}_{d0,j}\big)^2, \qquad \text{CV}_n(0)
+=
+\frac{1}{n}\sum_{i=1}^{n}(\tilde{Y}_i-\bar Y)^2
+$$
+
+**Estimated structural dimension**
+$$
+\hat d
+=
+\arg\min_{0\le d\le p}
+\text{CV}_n(d)
+$$
