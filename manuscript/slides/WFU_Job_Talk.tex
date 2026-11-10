@@ -671,14 +671,17 @@ Current methods are:
   where \(\beta\) is obtained from PCA.
 \item
   \textbf{qgcomp}: Estimates \(\mathbb{E}(Y^{a+1})-\mathbb{E}(Y^a)\),
-  where \(a\) is joint quantile increase in all exposures in \(X\).
+  where \(A\in\mathbb{R}\) is a scalar joint quantile increase in all
+  exposures in \(X\).
 \end{itemize}
 
-\pause
+\begin{uncoverenv}<5->
 
 \underline{\textit{Problem}}: Each {\color{emoryblue}(Bobb et al. 2015;
 Gibson et al. 2022; Keil et al. 2020)} has their pros and cons, but none
 of these are estimating \(\mathbb{E}(Y^x)\).
+
+\end{uncoverenv}
 \end{frame}
 
 \begin{frame}{Causal inference for continuous exposures}
@@ -736,7 +739,7 @@ dose-response in a lower dimensional space.
 \begin{frame}{Sufficient dimension reduction (SDR)}
 \protect\phantomsection\label{sufficient-dimension-reduction-sdr}
 There exists a rich literature on estimating \(\beta\) that preserves
-the \textit{regression} relationship: \[
+the \textit{regression} relationship {\color{emoryblue}(Cook 2026)}: \[
 \mathbb{E}(Y\mid X) = g(\beta^\top X).
 \] Since \(\beta\) is not unique, the statistical estimand is the
 \textbf{central mean subspace}, \(\mathcal{S}_{\mathbb{E}(Y\mid X)}\),
@@ -1528,8 +1531,7 @@ relationships.
 Can we extend CSDR from linear subspaces to \textbf{nonlinear,
 interpretable representations}?
 
-Variational autoencoders offer a template for learning the encoder and
-decoder.
+Variational autoencoders offer a template.
 
 \begin{center}
 \usetikzlibrary{shapes.geometric}
@@ -1589,34 +1591,33 @@ care cascade comparing
   Epic COSMOS EHR (county, nonprobability)
 \end{itemize}
 
-\underline{\textit{Problem}}: Can we now combine NHANES and large
-convenience samples (e.g., kiosks, EHR) in an intelligent way? Can
+\underline{\textit{Problem}}: Can we combine NHANES and large
+nonprobability samples (e.g., kiosks, EHR) in an intelligent way? Can
 spatiotemporal dependence further improve estimates?
 \end{frame}
 
-\begin{frame}{Final thoughts and WFU}
-\protect\phantomsection\label{final-thoughts-and-wfu}
+\begin{frame}{Final thoughts}
+\protect\phantomsection\label{final-thoughts}
 What I bring
 
 \begin{itemize}
 \tightlist
 \item
-  Interpretable causal learning and data fusion for environmental and
-  population health.
+  Causal inference, dimension reduction, spatiotemporal statistics
 \item
-  Application of methods to analyze complex observational data for
-  public health impact.
+  Applications in environmental health, EHR, disease surveillance for
+  public health impact
 \item
-  Engagement in interdisciplinary partnerships, teaching, and
-  mentorship.
+  Engagement and leadership in scientific collaborations, teaching, and
+  mentorship
 \end{itemize}
 
 \vspace{0.15cm}
 
 I would love to build this agenda at Wake Forest and contribute to its
-continued excellence. I am especially excited about opportunities for
-collaboration across the School of Medicine, Statistical Sciences, and
-Advocate Health.
+growing research community. I am especially excited about opportunities
+across the School of Medicine, Advocate Health, and Statistical
+Sciences.
 \end{frame}
 
 \begin{frame}[allowframebreaks]{References}
@@ -1651,6 +1652,11 @@ Meet-in-the-Middle Approach.''} \emph{Environment International} 158
 Colangelo, Kyle, and Ying-Ying Lee. 2026. {``Double {Debiased Machine
 Learning Nonparametric Inference} with {Continuous Treatments}.''}
 \emph{Journal of Business \& Economic Statistics} 44 (1): 67--79.
+
+\bibitem[\citeproctext]{ref-cookFoundationalArgumentsSufficient2026}
+Cook, R. Dennis. 2026. {``On the {Foundational Arguments} of {Sufficient
+Dimension Reduction}.''} \emph{WIREs Computational Statistics} 18 (2):
+e70064.
 
 \bibitem[\citeproctext]{ref-forzaniAsymptoticResultsNonparametric2024}
 Forzani, Liliana, Daniela Rodriguez, and Mariela Sued. 2024.
